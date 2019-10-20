@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+
+<title>2D图形变换</title>
+
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec4 vPosition;
+uniform vec4 uColor;
+uniform float centerX;
+uniform float centerY;
+uniform float theta;
+uniform float Tx;
+uniform float Ty;
+uniform float Sx;
+uniform float Sy;
+uniform float Shx;
+uniform float Shy;
+uniform float Fx;
+uniform float Fy;
+varying vec4 fColor;
+
+void main()
+{
+    vec4 p = vPosition;
+    p.z=0.0;
+    p.w=1.0;    
+    mat4 r = mat4(cos(theta),sin(theta),0,0,
+                -sin(theta),cos(theta),0,0,
+                0,0,1,0,
+                0,0,0,1);
+    mat4 t = mat4(1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                Tx,Ty,0,1);
+    mat4 f = mat4(Fy,0,0,0,
+                0,Fx,0,0,
+                0,0,1,0,
+                0,0,0,1);
+    mat4 s = mat4(Sx,0,0,0,
+                0,Sy,0,0,
+                0,0,1,0,
+                0,0,0,1);
+    mat4 sh = mat4(1,Shy,0,0,
+                Shx,1,0,0,
+                0,0,1,0,
+                0,0,0,1);
+    gl_Position = f*t*s*sh*r*p;	
+    fColor = uColor;
+}
+</script>
+
+<script id="vertex-shader-axis" type="x-shader/x-vertex">
+        attribute vec4 vPosition;
+        attribute vec4 vColor;
+        varying vec4 fColor;
+        void main()
+        { 
+            
+            gl_Position = vPosition;
+            gl_Position.z = 0.0;
+            gl_Position.w = 1.0;	
+            fColor = vColor;
+            
+        
+        
+        }
+        </script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+varying vec4 fColor;
+
+void main()
+{
+    gl_FragColor =  fColor; 
+}
+</script>
+
+<script id="fragment-shader-axis" type="x-shader/x-fragment">
+        precision mediump float;
+        varying vec4 fColor;
+        void main()
+        {
+            gl_FragColor =  vec4( 0.7, 0.7, 0.7, 1.0 ); 
+        }
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="../Common/js/vue.js"></script>
+<script type="text/javascript" src="../Common/js/Tween.js"></script>
+<link rel="stylesheet" href="../Common/css/mdui.css">
+<script src="../Common/js/mdui.min.js"></script>
+
+<script type="text/javascript" src="transformation.js"></script>
+
+</head>   
+
+<body class="mdui-appbar-with-toolbar">
+
+        <div class="mdui-appbar mdui-appbar-fixed">
+                <div class="mdui-toolbar mdui-color-teal">
+                  <a href="javascript:;" class="mdui-typo-headline">2D图形变换</a>
+                  <a href="javascript:;" class="mdui-typo-title"></a>
+                  <div class="mdui-toolbar-spacer"></div>
+                </div>
+              </div>
+        <div class="mdui-container" id="container">
+                <div class="mdui-row">
+                        <div class="mdui-col-xs-12 mdui-col-md-6 mdui-m-t-2">
+                                <canvas id="gl-canvas" class="mdui-img-fluid mdui-center mdui-img-rounded" width="600" height="600">
+                                        Oops ... your browser doesn't support the HTML5 canvas element
+                                </canvas>
+                                <div class="mdui-center" width="600">
+                                        <div class="mdui-m-t-2" style="text-align:center">
+                                                
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="addSquare()" mdui-tooltip="{content: '正方形'}"><i class="mdui-icon material-icons">&#xe3c1;</i></button>
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="addTriangle()" mdui-tooltip="{content: '三角形'}"><i class="mdui-icon material-icons">&#xe86b;</i></button>
+                                                
+                                                
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="addCircle()" mdui-tooltip="{content: '圆形'}"><i class="mdui-icon material-icons">&#xe40c;</i></button>
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="addX()" mdui-tooltip="{content: 'X形'}"><i class="mdui-icon material-icons">&#xe14c;</i></button>
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="clearGraph()" mdui-tooltip="{content: '复原'}"><i class="mdui-icon material-icons">refresh</i></button>                                                               
+                                                <button id="Move_Reset" class="mdui-btn mdui-btn-icon mdui-color-amber mdui-btn-raised mdui-ripple mdui-m-x-2" onclick="toggleAxis()" mdui-tooltip="{content: '坐标轴显示'}"><i class="mdui-icon material-icons">add</i></button>   
+                                        </div>
+                                </div>
+                        </div>
+                        <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
+                                
+                            <h1>控制面板</h1>
+                            
+                            <div class="mdui-divider"></div>
+                            <h2>反射调节</h2>
+                            <div class="mdui-row">
+                                <div class="mdui-col-xs-12 mdui-col-md-6">
+                                                <p class="mdui-float-left">X轴反射</p>
+                                                <label class="mdui-switch mdui-float-right">
+                                                        <input type="checkbox" v-model="Fx"/>
+                                                        <i class="mdui-switch-icon"></i>
+                                                </label>
+                                                </div>
+                                                
+                                                <div class="mdui-col-xs-12 mdui-col-md-6">
+                                                <p class="mdui-float-left">Y轴反射</p>
+                                                <label class="mdui-switch mdui-float-right">
+                                                        <input type="checkbox" v-model="Fy"/>
+                                                        <i class="mdui-switch-icon"></i>
+                                                </label>
+                                </div>
+                            </div>
+                                
+                            
+                            <div class="mdui-divider"></div>
+                            <h2>平移调节</h2>
+                                <button id="Move_Reset" class="mdui-btn" onclick="graph.Tx=graph.Ty=0.0;">Reset</button>
+                                <div id="XY_input" class="mdui-row">
+                                        <div class="mdui-textfield mdui-col-xs-6" id="X_input">
+                                                <label class="mdui-textfield-label">X</label>
+                                                <input class="mdui-textfield-input" type="number" v-model.number="Tx" step="0.1"/>
+                                        </div>
+                                        <div class="mdui-textfield mdui-col-xs-6" id="Y_input">
+                                                <label class="mdui-textfield-label">Y</label>
+                                                <input class="mdui-textfield-input" type="number" v-model.number="Ty" step="0.1"/>
+                                        </div>
+                                </div>
+                                <div class="mdui-divider"></div>
+                                <h2>缩放调节</h2>
+                                    <button id="Move_Reset" class="mdui-btn" onclick="graph.Sx=graph.Sy=1.0;">Reset</button>
+                                    <div id="XY_input" class="mdui-row">
+                                            <div class="mdui-textfield mdui-col-xs-6" id="X_input">
+                                                    <label class="mdui-textfield-label">Sx</label>
+                                                    <input class="mdui-textfield-input" type="number" v-model.number="Sx" step="0.1"/>
+                                            </div>
+                                            <div class="mdui-textfield mdui-col-xs-6" id="Y_input">
+                                                    <label class="mdui-textfield-label">Sy</label>
+                                                    <input class="mdui-textfield-input" type="number" v-model.number="Sy" step="0.1"/>
+                                            </div>
+                                    </div>
+                                    <div class="mdui-divider"></div>
+                                    <h2>错切调节</h2>
+                                        <button id="Move_Reset" class="mdui-btn" onclick="graph.Shx=graph.Shy=0.0;">Reset</button>
+                                        <div id="XY_input" class="mdui-row">
+                                                <div class="mdui-textfield mdui-col-xs-6" id="X_input">
+                                                        <label class="mdui-textfield-label">Shx</label>
+                                                        <input class="mdui-textfield-input" type="number" v-model.number="Shx" step="0.1"/>
+                                                </div>
+                                                <div class="mdui-textfield mdui-col-xs-6" id="Y_input">
+                                                        <label class="mdui-textfield-label">Shy</label>
+                                                        <input class="mdui-textfield-input" type="number" v-model.number="Shy" step="0.1"/>
+                                                </div>
+                                        </div>
+                                        <div class="mdui-divider"></div>
+                            <h2>旋转调节</h2>
+                            <!--
+                                <button id="Animation" class="mdui-btn">Start/Stop Rotation </button>
+                        -->
+                                <button id="Rotation_Reset" class="mdui-btn" onclick="graph.theta=0.0;animflag=false;">Reset</button>
+                                <div id="Rotation_Angle">
+                                        <div class="mdui-textfield" >
+                                            <label class="mdui-textfield-label">Rotation Angle</label>
+                                            <input class="mdui-textfield-input" type="number" v-model.number="theta" step="0.1"/>
+                                        </div>
+                                </div>
+                                
+                                        
+                        </div>
+                        
+        </div>
+
+            
+        
+            
+            
+</div>
+</body>
+</html>
