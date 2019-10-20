@@ -25,7 +25,7 @@ var c1,c2,c3;
 	c1 = vec4( 1.0, 0.0, 0.0, 1.0 );
 	c2 = vec4( 0.0, 1.0, 0.0, 1.0 );
 	c3 = vec4( 0.0, 0.0, 1.0, 1.0 );
-
+var vPosition; 
 var axis_bufferId;
 var theta = 0.0;
 var thetaLoc;
@@ -95,7 +95,7 @@ window.onload = function init()
 	bufferId = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );	
 	gl.bufferData( gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW );
-	var vPosition = gl.getAttribLocation( program, "vPosition" );
+	vPosition = gl.getAttribLocation( program, "vPosition" );
     gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0 );
 	gl.enableVertexAttribArray( vPosition );
 	thetaLoc = gl.getUniformLocation( program, "theta" );
@@ -141,14 +141,12 @@ window.onload = function init()
 			tweenedColor:{R:255,G:255,B:255},
 			R:255,
 			G:255,
-			B:255
+			B:255,
+			pointsChangeFlag:false,
 		},
 		watch:{
 			points: function(){
-				
-				gl.clear( gl.COLOR_BUFFER_BIT );  
-				//drawGraph();
-				drawAxis();
+				this.pointsChangeFlag=true;
 			},
 			Tx: function(newValue){
 				new TWEEN.Tween(this).easing(TWEEN.Easing.Quadratic.InOut).to({tweenedTx:newValue},500).start();
@@ -297,11 +295,16 @@ function drawGraph(){
 	gl.useProgram(program);
 	
 	gl.bindBuffer(gl.ARRAY_BUFFER,bufferId);  
-	gl.bufferData(gl.ARRAY_BUFFER,flatten(graph.points),gl.STATIC_DRAW);
-	var vPosition = gl.getAttribLocation( program, "vPosition" );
+	if(graph.pointsChangeFlag==true){
+		gl.bufferData(gl.ARRAY_BUFFER,flatten(graph.points),gl.STATIC_DRAW);
+		graph.pointsChangeFlag=false;
+	}
+		
 	gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0 );
 	gl.enableVertexAttribArray( vPosition );
 	gl.drawArrays(gl.LINES,0,graph.points.length);
+
+
 
 	drawAxis();
 	TWEEN.update();
