@@ -11,9 +11,15 @@ attribute vec4 vPosition;
 attribute vec4 vColor;
 varying vec4 fColor;
 uniform mat4 uMatrix;
+uniform float u_fudgeFactor;
 void main()
 {
-    gl_Position = uMatrix*vPosition;
+    vec4 position = uMatrix*vPosition;
+    // 调整除数
+    float zToDivideBy = 1.0 + position.z * u_fudgeFactor;
+ 
+    // x 和 y 除以调整后的除数
+    gl_Position = vec4(position.xy / zToDivideBy, position.zw);
     fColor = vColor;
 }
 </script>
@@ -66,9 +72,10 @@ void main()
                         <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
                                 
                             <h1>控制面板</h1>
-                            <input v-model.number="angleX" step="0.1" type="number">
-                            <input v-model.number="angleY" step="0.1" type="number">
-                            <input v-model.number="angleZ" step="0.1" type="number">
+                            X_r<input v-model.number="angleX" step="0.5" type="number">
+                            Y_r<input v-model.number="angleY" step="0.5" type="number">
+                            Z_r<input v-model.number="angleZ" step="0.5" type="number">
+                            u_fudgeFactor<input v-model.number="fudgeFactor" step="0.1" type="number">
                         </div>
 
             

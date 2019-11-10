@@ -19,6 +19,8 @@ function main(){
             vPositionBufferLoc:0,
             vColorBufferLoc:0,
             uMatrixLoc:0,
+            u_fudgeFactorLoc:0,
+            fudgeFactor:0,
             angleX:0,
             angleY:0,
             angleZ:0
@@ -32,7 +34,8 @@ function main(){
             },
             angleX:function(){redraw();},
             angleY:function(){redraw();},
-            angleZ:function(){redraw();}
+            angleZ:function(){redraw();},
+            fudgeFactor:function(){redraw();},
         }
     });
 
@@ -42,7 +45,7 @@ function main(){
     program=webglUtils.createProgramFromScripts(gl,["vertex-shader","fragment-shader"]);
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+    gl.clearColor( 0.5, 0.5, 0.5, 1.0 );
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(program);
     var points=[vec3(-0.5,-0.5,0),vec3(-0.5,0.5,0),vec3(-0.0,0.5,0.0)];
@@ -64,6 +67,8 @@ function main(){
     gl.enableVertexAttribArray(graph.vColorBufferLoc);
     
     graph.uMatrixLoc = gl.getUniformLocation(program,"uMatrix");
+    graph.u_fudgeFactorLoc = gl.getUniformLocation(program,"u_fudgeFactor");
+
 
     configPositionData(gl,graph);
  
@@ -86,12 +91,14 @@ function main(){
 
 function redraw(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);
     var points=[];
     var colors=[];
     for(var i=0;i<graph.vertex.length;i++){
         for(var j=0;j<graph.vertex[i].length;j++){
             points.push(graph.points[graph.vertex[i][j]]);
-            colors.push(graph.colors[Math.ceil(i/2)]);
+            colors.push(graph.colors[Math.floor(i/2)]);
         }
     }
     
@@ -113,7 +120,7 @@ function redraw(){
     mat = mult(mat,rotateZ(graph.angleZ));
     console.log(mat);
     gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(mat));
-
+    gl.uniform1f(graph.u_fudgeFactorLoc,graph.fudgeFactor);
     gl.drawArrays(gl.TRIANGLES,0,points.length);
     //requestAnimationFrame(redraw);
 } 
@@ -131,33 +138,33 @@ function configPositionData(gl,graph){
     ];
     graph.vertex=[
         //1
-        [6,7,5],
-        [6,5,4],
+        [5,7,6],
+        [4,5,6],
         //2
-        [2,3,7],
-        [2,7,6],
+        [7,3,2],
+        [6,7,2],
         //3
-        [4,0,6],
-        [6,0,2],
+        [6,0,4],
+        [2,0,6],
         //4
-        [4,5,0],
-        [0,5,1],
+        [0,5,4],
+        [1,5,0],
         //5
         [5,1,7],
         [7,1,3],
         //6
-        [2,0,1],
-        [3,2,1]
+        [1,0,2],
+        [1,2,3]
     ];
     graph.colors=[
-        vec4(1.0,1.0,1.0,1.0),
-        vec4(1.0,1.0,0.0,1.0),
-        vec4(1.0,0.0,1.0,1.0),
-        vec4(1.0,0.0,0.0,1.0),
-        vec4(0.0,1.0,1.0,1.0),
-        vec4(0.0,1.0,0.0,1.0),
-        vec4(0.0,0.0,1.0,1.0),
-        vec4(0.0,0.0,0.0,1.0),
+        vec4(1.0,1.0,1.0,1.0),//白1
+        vec4(1.0,1.0,0.0,1.0),//黄2
+        vec4(1.0,0.0,1.0,1.0),//紫3
+        vec4(1.0,0.0,0.0,1.0),//红4
+        vec4(0.0,1.0,1.0,1.0),//青5
+        vec4(0.0,1.0,0.0,1.0),//绿6
+        vec4(0.0,0.0,1.0,1.0),//蓝7
+        vec4(0.0,0.0,0.0,1.0),//黑8
     ]
 }
 
