@@ -3,24 +3,27 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
 
-<title>2D图形变换</title>
+<title>3D图形变换</title>
 
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec4 vPosition;
 attribute vec4 vColor;
 varying vec4 fColor;
+varying vec3 v_normal;
 uniform mat4 uMatrix;
+uniform mat4 uWorld;
+uniform vec3 uLightPos; 
 uniform float u_fudgeFactor;
+attribute vec3 a_normal;
+varying vec3 v_surfaceToLight;
 void main()
 {
-    vec4 position = uMatrix*vPosition;
-    // 调整除数
-    float zToDivideBy = 1.0 + position.z * u_fudgeFactor;
- 
-    // x 和 y 除以调整后的除数
-    gl_Position = vec4(position.xy / zToDivideBy, position.zw);
+    gl_Position = uMatrix*vPosition;
     fColor = vColor;
+    vec3 surfaceWorldPos=(uWorld*vPosition).xyz;
+    v_normal=mat3(uWorld)*a_normal;
+    v_surfaceToLight=uLightPos-surfaceWorldPos;
 }
 </script>
 
@@ -28,10 +31,16 @@ void main()
 <script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
 varying vec4 fColor;
-
+varying vec3 v_normal;
+varying vec3 v_surfaceToLight;
+uniform vec3 u_reverseLightDirection;
 void main()
 {
+    vec3 normal=normalize(v_normal);
+    vec3 surfaceToLightDirection=normalize(v_surfaceToLight);
+    float light = dot(normal,surfaceToLightDirection);
     gl_FragColor =  fColor; 
+    gl_FragColor.rgb*=light;
 }
 </script>
 
@@ -51,7 +60,7 @@ void main()
 
         <div class="mdui-appbar mdui-appbar-fixed">
                 <div class="mdui-toolbar mdui-color-teal">
-                  <a href="javascript:;" class="mdui-typo-headline">2D图形变换</a>
+                  <a href="javascript:;" class="mdui-typo-headline">3D图形变换</a>
                   <a href="javascript:;" class="mdui-typo-title"></a>
                   <div class="mdui-toolbar-spacer"></div>
                 </div>
@@ -72,10 +81,19 @@ void main()
                         <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
                                 
                             <h1>控制面板</h1>
-                            X_r<input v-model.number="angleX" step="0.5" type="number">
-                            Y_r<input v-model.number="angleY" step="0.5" type="number">
-                            Z_r<input v-model.number="angleZ" step="0.5" type="number">
-                            u_fudgeFactor<input v-model.number="fudgeFactor" step="0.1" type="number">
+                            X_r<input v-model.number="angleX" step="0.5" type="number"><br>
+                            Y_r<input v-model.number="angleY" step="0.5" type="number"><br>
+                            Z_r<input v-model.number="angleZ" step="0.5" type="number"><br>
+                            u_fudgeFactor<input v-model.number="fudgeFactor" step="0.1" type="number"><br>
+                            tx<input v-model.number="tx" step="0.1" type="number"><br>
+                            ty<input v-model.number="ty" step="0.1" type="number"><br>
+                            tz<input v-model.number="tz" step="0.1" type="number"><br>
+                            cameraX<input v-model.number="cameraX" step="0.5" type="number"><br>
+                            cameraY<input v-model.number="cameraY" step="0.5" type="number"><br>
+                            cameraZ<input v-model.number="cameraZ" step="0.5" type="number"><br>
+                            cameraTx<input v-model.number="cameraTx" step="0.5" type="number"><br>
+                            cameraTy<input v-model.number="cameraTy" step="0.5" type="number"><br>
+                            cameraTz<input v-model.number="cameraTz" step="0.5" type="number"><br>
                         </div>
 
             
