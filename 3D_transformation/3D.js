@@ -55,6 +55,18 @@ function main(){
             lightPos:[],
     
         },
+        methods:{
+          onUp:function(){
+            this.cameraTz+=0.5;
+          },
+          onDown:function(){
+            this.cameraTz-=0.5;
+          }
+        }
+        ,
+        create(){
+
+        },
         watch:{
           
           /*
