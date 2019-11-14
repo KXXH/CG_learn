@@ -49,32 +49,83 @@ function main(){
             cameraTy:0,
             cameraTz:0,
             normals:[],
+            perspectiveSwitch:true,
             u_reverseLightDirectionLoc:0,
             lightDirection:[],
             uLightPosLoc:0,
             lightPos:[],
+            lkx:0,
+            lky:0,
+            lkz:0,
+            goSwitch:false,
     
         },
         methods:{
           onUp:function(){
-            this.cameraTz+=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+            var t=rotateX(-this.cameraX);
+            t=mult(t,rotateY(-this.cameraY));
+            t=mult(t,rotateZ(-this.cameraZ));
+            //t=scale(0.5,t);
+            if(graph.goSwitch){
+              this.cameraTz+=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
             this.cameraTy+=0.5*Math.sin(radians(this.cameraX));
             this.cameraTx+=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+            }
+            else{
+              this.cameraTz+=t[2][2];
+              this.cameraTy+=t[2][1];
+              this.cameraTx+=t[2][0];
+            }
+
           },
           onDown:function(){
-            this.cameraTy-=0.5*Math.sin(radians(this.cameraX));
-            this.cameraTz-=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-            this.cameraTx-=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+            var t=rotateX(-this.cameraX);
+            t=mult(t,rotateY(-this.cameraY));
+            t=mult(t,rotateZ(-this.cameraZ));
+            //t=scale(-0.5,t);
+            if(graph.goSwitch){
+              this.cameraTy-=0.5*Math.sin(radians(this.cameraX));
+              this.cameraTz-=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+              this.cameraTx-=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+            }else{
+              this.cameraTz-=t[2][2];
+              this.cameraTy-=t[2][1];
+              this.cameraTx-=t[2][0];
+            }
+            
+            
           },
           onLeft:function(){
-            this.cameraTx-=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
-            this.cameraTy-=0.5*Math.sin(radians(this.cameraZ));
-            this.cameraTz+=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
+            var t=rotateX(-this.cameraX);
+            t=mult(t,rotateY(-this.cameraY));
+            t=mult(t,rotateZ(-this.cameraZ));
+            if(graph.goSwitch){
+              this.cameraTx-=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
+              this.cameraTy-=0.5*Math.sin(radians(this.cameraZ));
+              this.cameraTz+=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
+            }else{
+              this.cameraTz-=t[0][2];
+              this.cameraTy-=t[0][1];
+              this.cameraTx-=t[0][0];
+            }
+            
+
           },
           onRight:function(){
-            this.cameraTx+=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
-            this.cameraTy+=0.5*Math.sin(radians(this.cameraZ));
-            this.cameraTz-=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
+            var t=rotateX(-this.cameraX);
+            t=mult(t,rotateY(-this.cameraY));
+            t=mult(t,rotateZ(-this.cameraZ));
+            if(graph.goSwitch){
+              this.cameraTx+=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
+              this.cameraTy+=0.5*Math.sin(radians(this.cameraZ));
+              this.cameraTz-=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
+            }else{
+              this.cameraTz+=t[0][2];
+              this.cameraTy+=t[0][1];
+              this.cameraTx+=t[0][0];
+            }
+            
+
           }
         }
         ,
@@ -215,33 +266,35 @@ function redraw(){
     //console.log('cameraMat');
     //console.log(cameraMat);
     var cameraPos=vec3([cameraMat[0][3],cameraMat[1][3],cameraMat[2][3]]);
+    cameraPos=[graph.cameraTx,graph.cameraTy,graph.cameraTz];
     var up=vec3([0,1,0]);
-    var at=vec3([0,0,0]);
+    var at=vec3([graph.lkx,graph.lky,graph.lkz]);
     var lkMat = lookAt(cameraPos,at,up);
+    console.log('lookAt');
+    console.log(lkMat);
     var viewMat=inverse4(cameraMat);
     
     //viewMat=inverse4(lkMat);
-    //console.log('viewMat');
-    //console.log(viewMat);
+    
+    //viewMat=lkMat;
+    console.log('viewMat');
+    console.log(viewMat);
     
     //viewMat=cameraMat;
     for(var i=0;i<8;i++){
-      var mat=ortho(-1,1,-1,1,-1,1);
-      mat=mult(perspective(90,1,0.1,100),mat);
-      mat = mult(mat,viewMat);
+      var projectionMat=ortho(-1,1,-1,1,-1,1);
+      if(graph.perspectiveSwitch)
+        projectionMat=mult(perspective(90,1,0.1,100),projectionMat);
+      else
+        projectionMat=ortho(-10,10,-10,10,-200,200);
+      var mat = mult(projectionMat,viewMat);
       var worldMat=translate(positions[i][0],positions[i][1],10);
-
-      mat = mult(mat,translate(positions[i][0],positions[i][1],10));
-      mat = mult(mat,translate(graph.tx,graph.ty,graph.tz));
-      mat = mult(mat,rotateX(graph.angleX));
-      mat = mult(mat,rotateY(graph.angleY));
-      mat = mult(mat,rotateZ(graph.angleZ));
-
-      worldMat = mult(worldMat,translate(positions[i][0],positions[i][1],10));
       worldMat = mult(worldMat,translate(graph.tx,graph.ty,graph.tz));
       worldMat = mult(worldMat,rotateX(graph.angleX));
       worldMat = mult(worldMat,rotateY(graph.angleY));
       worldMat = mult(worldMat,rotateZ(graph.angleZ));
+
+      mat = mult(mat,worldMat);
 
       gl.uniform3fv(graph.uLightPosLoc,graph.lightPos);
       gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(worldMat));
@@ -304,7 +357,7 @@ function configPositionData(gl,graph){
         vec4(0.0,0.0,0.0,1.0),//黑8
     ];
     graph.lightDirection=normalize([-0.1,0.2,-0.5]);
-    graph.lightPos=[10,10,10];
+    graph.lightPos=[10,10,-10];
     
 }
 
