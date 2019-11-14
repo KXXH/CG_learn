@@ -449,8 +449,11 @@ function lookAt( eye, at, up )
         return mat4();
     }
 
-    var v = normalize( subtract(at, eye) );  // view direction vector
+    var v = normalize( subtract(eye, at) );  // view direction vector
+    console.log('v x up = ',cross(v, up));
     var n = normalize( cross(v, up) );       // perpendicular vector
+    console.log('n=',n);
+    console.log('v=',v);
     var u = normalize( cross(n, v) );        // "new" up vector
 
     v = negate( v );
@@ -601,6 +604,8 @@ function normalize( u, excludeLastComponent )
     }
 
     var len = length( u );
+
+    if(len<=0.00001 && len>=-0.00001) len=0.00001;
 
     if ( !isFinite(len) ) {
         throw "normalize: vector " + u + " has zero length";

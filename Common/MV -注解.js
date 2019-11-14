@@ -454,6 +454,7 @@ function lookAt( eye, at, up )
 
     var v = normalize( subtract(at, eye) );  // view direction vector
     var n = normalize( cross(v, up) );       // perpendicular vector
+
     var u = normalize( cross(n, v) );        // "new" up vector
 
     v = negate( v );
@@ -465,6 +466,15 @@ function lookAt( eye, at, up )
         vec4()
     );
 
+    /*
+    result=mat4(
+        vec4(n,0),
+        vec4(u,0),
+        vec4(v,0),
+        vec4(eye,1)
+    );
+*/
+    //result=transpose(result);
     return result;
 }
 

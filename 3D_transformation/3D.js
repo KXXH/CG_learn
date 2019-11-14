@@ -58,27 +58,39 @@ function main(){
             lky:0,
             lkz:0,
             goSwitch:false,
-    
+            lookAtLock:false,
+            cameraCTM:mat4(
+              vec4(1,0,0,0),
+              vec4(0,1,0,0),
+              vec4(0,0,1,0),
+              vec4(0,0,0,1)
+            )
         },
         methods:{
           onUp:function(){
+
+            
+
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
             //t=scale(0.5,t);
             if(graph.goSwitch){
               this.cameraTz+=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-            this.cameraTy+=0.5*Math.sin(radians(this.cameraX));
-            this.cameraTx+=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
+              this.cameraTy+=0.5*Math.sin(radians(this.cameraX));
+              this.cameraTx+=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
             }
             else{
               this.cameraTz+=t[2][2];
               this.cameraTy+=t[2][1];
               this.cameraTx+=t[2][0];
+              this.cameraCTM=mult(translate(t[2][0],t[2][1],t[2][2]),this.cameraCTM);
             }
 
           },
           onDown:function(){
+
+            //this.cameraCTM=mult(translate(0,0,-1),this.cameraCTM);
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
@@ -91,11 +103,13 @@ function main(){
               this.cameraTz-=t[2][2];
               this.cameraTy-=t[2][1];
               this.cameraTx-=t[2][0];
+              this.cameraCTM=mult(translate(-t[2][0],-t[2][1],-t[2][2]),this.cameraCTM);
             }
             
             
           },
           onLeft:function(){
+            //this.cameraCTM=mult(translate(-1,0,0),this.cameraCTM);
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
@@ -107,11 +121,13 @@ function main(){
               this.cameraTz-=t[0][2];
               this.cameraTy-=t[0][1];
               this.cameraTx-=t[0][0];
+              this.cameraCTM=mult(translate(-t[0][0],-t[0][1],-t[0][2]),this.cameraCTM);
             }
             
 
           },
           onRight:function(){
+            //this.cameraCTM=mult(translate(1,0,0),this.cameraCTM);
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
@@ -123,6 +139,7 @@ function main(){
               this.cameraTz+=t[0][2];
               this.cameraTy+=t[0][1];
               this.cameraTx+=t[0][0];
+              this.cameraCTM=mult(translate(t[0][0],t[0][1],t[0][2]),this.cameraCTM);
             }
             
 
@@ -138,8 +155,8 @@ function main(){
               case 40:case 83:graph.onDown();break;
               case 37:case 65:graph.onLeft();break;
               case 39:case 68:graph.onRight();break;
-              case 81:graph.cameraY-=0.5;break;
-              case 69:graph.cameraY+=0.5;break;
+              case 81:graph.cameraY-=0.5;graph.cameraCTM=mult(rotateY(-0.5),graph.cameraCTM);break;
+              case 69:graph.cameraY+=0.5;graph.cameraCTM=mult(rotateY(0.5),graph.cameraCTM);break;
             }
           };
         },
@@ -263,20 +280,22 @@ function redraw(){
     cameraMat=mult(cameraMat,rotateX(graph.cameraX));
     cameraMat=mult(cameraMat,rotateZ(graph.cameraZ));
     cameraMat=mult(cameraMat,rotateY(graph.cameraY));
+    //cameraMat = graph.cameraCTM;
     //console.log('cameraMat');
     //console.log(cameraMat);
     var cameraPos=vec3([cameraMat[0][3],cameraMat[1][3],cameraMat[2][3]]);
-    cameraPos=[graph.cameraTx,graph.cameraTy,graph.cameraTz];
+    //cameraPos=[graph.cameraTx,graph.cameraTy,graph.cameraTz];
     var up=vec3([0,1,0]);
     var at=vec3([graph.lkx,graph.lky,graph.lkz]);
     var lkMat = lookAt(cameraPos,at,up);
     console.log('lookAt');
     console.log(lkMat);
+    
     var viewMat=inverse4(cameraMat);
     
     //viewMat=inverse4(lkMat);
     
-    //viewMat=lkMat;
+    if(graph.lookAtLock) viewMat=lkMat;
     console.log('viewMat');
     console.log(viewMat);
     
