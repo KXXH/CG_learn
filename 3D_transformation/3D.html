@@ -51,12 +51,11 @@ void main()
 <script type="text/javascript" src="../Common/js/Tween.js"></script>
 <link rel="stylesheet" href="../Common/css/mdui.css">
 <script src="../Common/js/mdui.min.js"></script>
-<script src="../Common/webgl-utils-gfx.js"></script>
 <script type="text/javascript" src="3D.js"></script>
 
 </head>   
 
-<body class="mdui-appbar-with-toolbar">
+<body class="mdui-appbar-with-toolbar" id="body">
 
         <div class="mdui-appbar mdui-appbar-fixed">
                 <div class="mdui-toolbar mdui-color-teal">
@@ -71,6 +70,7 @@ void main()
                                 <canvas id="gl-canvas" class="mdui-img-fluid mdui-center mdui-img-rounded" width="600" height="600">
                                         Oops ... your browser doesn't support the HTML5 canvas element
                                 </canvas>
+                                <div><button style="float: right;" id="resizeBtn">resize</button></div>
                                 <div class="mdui-center" width="600">
                                         <div class="mdui-m-t-2" style="text-align:center">
                                                 
@@ -84,9 +84,13 @@ void main()
                             X_r<input v-model.number="angleX" step="0.5" type="number"><br>
                             Y_r<input v-model.number="angleY" step="0.5" type="number"><br>
                             Z_r<input v-model.number="angleZ" step="0.5" type="number"><br>
+                            scale<input v-model.number="scale" step="0.1" type="number"><br>
                             tx<input v-model.number="tx" step="0.1" type="number"><br>
                             ty<input v-model.number="ty" step="0.1" type="number"><br>
                             tz<input v-model.number="tz" step="0.1" type="number"><br>
+                            lightX<input v-model.number="lightPos[0]" step="0.1" type="number"><br>
+                            lightY<input v-model.number="lightPos[1]" step="0.1" type="number"><br>
+                            lightZ<input v-model.number="lightPos[2]" step="0.1" type="number"><br>
                             cameraX<input v-model.number="cameraX" step="0.5" type="number"><br>
                             cameraY<input v-model.number="cameraY" step="0.5" type="number"><br>
                             cameraZ<input v-model.number="cameraZ" step="0.5" type="number"><br>

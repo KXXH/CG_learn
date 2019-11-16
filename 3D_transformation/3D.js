@@ -15,7 +15,6 @@ var positions=[
   [0,-3],
   [-3,3],
   [-3,-3],
-  //[0,0]
 ];
 
 function main(){
@@ -54,9 +53,12 @@ function main(){
             lightDirection:[],
             uLightPosLoc:0,
             lightPos:[],
+            scale:1,
             lkx:0,
             lky:0,
             lkz:0,
+            canvas:document.getElementById("gl-canvas"),
+            canvasChangeFlag:false,
             goSwitch:false,
             lookAtLock:false,
             cameraCTM:mat4(
@@ -64,13 +66,24 @@ function main(){
               vec4(0,1,0,0),
               vec4(0,0,1,0),
               vec4(0,0,0,1)
-            )
+            ),
+            pointInfoChangeFlag:false,
+            
+            positions:[
+              [4 ,4],
+              [4,-4],
+              [4,0],
+              [-4,0],
+              [0,4],
+              [0,-4],
+              [-4,4],
+              [-4,-4],
+            ],
+            mouseDownFlag:false,
+            trackMouseFlag:false
         },
         methods:{
           onUp:function(){
-
-            
-
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
@@ -141,9 +154,15 @@ function main(){
               this.cameraTx+=t[0][0];
               this.cameraCTM=mult(translate(t[0][0],t[0][1],t[0][2]),this.cameraCTM);
             }
-            
-
+          },
+          resizeCanvas:function(width,height){
+            this.canvas.width=width;
+            this.canvas.height=height;
+            this.canvasChangeFlag=true;
+            resize(graph.canvas);
+            //gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
           }
+
         }
         ,
         created:function(){
@@ -161,7 +180,14 @@ function main(){
           };
         },
         watch:{
-          
+          lightPos:function(){
+            gl.uniform3fv(this.uLightPosLoc,this.lightPos);
+          },
+          lookAtLock:function(newValue){
+            if(newValue){
+              this.cameraX=this.cameraY=this.cameraZ=0;
+            }
+          },
           /*
             points:function(){
                 //redraw();
@@ -183,13 +209,85 @@ function main(){
             cameraTy:function(){redraw();},
             cameraTz:function(){redraw();},
             */
+        },
+        computed:{
+          cameraMat:function(){
+            var cameraMat = translate(this.cameraTx,this.cameraTy,this.cameraTz);
+            cameraMat=mult(cameraMat,rotateX(this.cameraX));
+            cameraMat=mult(cameraMat,rotateZ(this.cameraZ));
+            cameraMat=mult(cameraMat,rotateY(this.cameraY));
+            return cameraMat;
+          },
+          viewMat:function(){
+            var cameraPos=vec3([this.cameraMat[0][3],this.cameraMat[1][3],this.cameraMat[2][3]]);
+            //cameraPos=[graph.cameraTx,graph.cameraTy,graph.cameraTz];
+            var up=vec3([0,1,0]);
+            var at=vec3([graph.lkx,graph.lky,graph.lkz]);
+            var lkMat = lookAt(cameraPos,at,up);
+            console.log('lookAt');
+            console.log(lkMat);
+            
+            var viewMat=inverse4(this.cameraMat);
+            
+            //viewMat=inverse4(lkMat);
+            
+            if(graph.lookAtLock) viewMat=lkMat;
+
+            return viewMat;
+          },
+          pointsCount:function(){
+            var c=0;
+            for(var i=0;i<graph.vertex.length;i++){
+              c+=graph.vertex[i].length;
+            }
+            return c;
+          },
+          worldMat:function(){
+            var ans=[];
+            for(var i=0;i<this.positions.length;i++){
+              var worldMat=translate(this.positions[i][0],this.positions[i][1],10);
+              worldMat = mult(worldMat,translate(this.tx,this.ty,this.tz));
+              worldMat = mult(worldMat,rotateX(this.angleX));
+              worldMat = mult(worldMat,rotateY(this.angleY));
+              worldMat = mult(worldMat,rotateZ(this.angleZ));
+              worldMat = mult(worldMat,scalem(this.scale,this.scale,this.scale));
+              ans.push(worldMat);
+            }
+            console.log('canvas',canvas);
+            return ans;
+          },
+          projectionMat:function(){
+            var projectionMat=ortho(-1,1,-1,1,-1,1);
+            var ratio=this.canvas.width/this.canvas.height;
+
+            if(this.canvasChangeFlag) this.canvasChangeFlag=false;
+
+            if(this.perspectiveSwitch)
+              projectionMat=mult(perspective(90,ratio,0.1,100),projectionMat);
+            else
+              projectionMat=ortho(-10,10,-10,10,-200,200);
+            return projectionMat;
+          },
+          mat:function(){
+            var ans=[];
+            for(var i=0;i<this.worldMat.length;i++){
+              var projectionMat=this.projectionMat;
+              var mat = mult(projectionMat,graph.viewMat);
+              var worldMat=this.worldMat[i];
+
+              mat = mult(mat,worldMat);
+              ans.push(mat);
+            }
+            return ans;
+          },
+          
         }
     });
 
     var canvas = document.getElementById("gl-canvas");
     gl = WebGLUtils.setupWebGL( canvas );
 
-    program=webglUtils.createProgramFromScripts(gl,["vertex-shader","fragment-shader"]);
+    program=initShaders( gl, "vertex-shader", "fragment-shader" );;
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
     gl.clearColor( 0.5, 0.5, 0.5, 1.0 );
@@ -246,82 +344,45 @@ function main(){
 }
 
 function redraw(){
+    resize(graph.canvas);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
-    var points=[];
-    var colors=[];
-    var normals=[];
-    for(var i=0;i<graph.vertex.length;i++){
-        for(var j=0;j<graph.vertex[i].length;j++){
-            points.push(graph.points[graph.vertex[i][j]]);
-            colors.push(graph.colors[Math.floor(i/2)]);
-            normals.push(graph.normals[Math.floor(i/2)]);
-        }
+    //gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
+    if(graph.canvas.height>graph.canvas.width){
+      gl.viewport( 0, graph.canvas.height/2-graph.canvas.width/2, graph.canvas.width,  graph.canvas.width);
+    }else{
+      gl.viewport(  graph.canvas.width/2-graph.canvas.height/2, 0, graph.canvas.height, graph.canvas.height);
     }
+    gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
+    if(graph.pointInfoChangeFlag){
+      var points=[];
+      var colors=[];
+      var normals=[];
+      for(var i=0;i<graph.vertex.length;i++){
+          for(var j=0;j<graph.vertex[i].length;j++){
+              points.push(graph.points[graph.vertex[i][j]]);
+              colors.push(graph.colors[Math.floor(i/2)]);
+              normals.push(graph.normals[Math.floor(i/2)]);
+          }
+      }
 
-    gl.bindBuffer(gl.ARRAY_BUFFER,graph.vPositionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,flatten(points),gl.STATIC_DRAW);
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER,graph.vColorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,flatten(colors),gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER,graph.vPositionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER,flatten(points),gl.STATIC_DRAW);
       
-    gl.bindBuffer(gl.ARRAY_BUFFER,graph.a_normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,flatten(normals),gl.STATIC_DRAW);
-    
+      gl.bindBuffer(gl.ARRAY_BUFFER,graph.vColorBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER,flatten(colors),gl.STATIC_DRAW);
+        
+      gl.bindBuffer(gl.ARRAY_BUFFER,graph.a_normalBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER,flatten(normals),gl.STATIC_DRAW);
+      graph.pointInfoChangeFlag=false;
+    }
     var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-    /*
-    var cameraMat = rotateY(graph.cameraY);
-    cameraMat=mult(cameraMat,rotateX(graph.cameraX));
-    cameraMat=mult(cameraMat,rotateZ(graph.cameraZ));
-    cameraMat=mult(cameraMat,translate(graph.cameraTx,graph.cameraTy,graph.cameraTz));
-    */
-    var cameraMat = translate(graph.cameraTx,graph.cameraTy,graph.cameraTz);
-    cameraMat=mult(cameraMat,rotateX(graph.cameraX));
-    cameraMat=mult(cameraMat,rotateZ(graph.cameraZ));
-    cameraMat=mult(cameraMat,rotateY(graph.cameraY));
-    //cameraMat = graph.cameraCTM;
-    //console.log('cameraMat');
-    //console.log(cameraMat);
-    var cameraPos=vec3([cameraMat[0][3],cameraMat[1][3],cameraMat[2][3]]);
-    //cameraPos=[graph.cameraTx,graph.cameraTy,graph.cameraTz];
-    var up=vec3([0,1,0]);
-    var at=vec3([graph.lkx,graph.lky,graph.lkz]);
-    var lkMat = lookAt(cameraPos,at,up);
-    console.log('lookAt');
-    console.log(lkMat);
-    
-    var viewMat=inverse4(cameraMat);
-    
-    //viewMat=inverse4(lkMat);
-    
-    if(graph.lookAtLock) viewMat=lkMat;
-    console.log('viewMat');
-    console.log(viewMat);
-    
-    //viewMat=cameraMat;
+
     for(var i=0;i<8;i++){
-      var projectionMat=ortho(-1,1,-1,1,-1,1);
-      if(graph.perspectiveSwitch)
-        projectionMat=mult(perspective(90,1,0.1,100),projectionMat);
-      else
-        projectionMat=ortho(-10,10,-10,10,-200,200);
-      var mat = mult(projectionMat,viewMat);
-      var worldMat=translate(positions[i][0],positions[i][1],10);
-      worldMat = mult(worldMat,translate(graph.tx,graph.ty,graph.tz));
-      worldMat = mult(worldMat,rotateX(graph.angleX));
-      worldMat = mult(worldMat,rotateY(graph.angleY));
-      worldMat = mult(worldMat,rotateZ(graph.angleZ));
-
-      mat = mult(mat,worldMat);
-
-      gl.uniform3fv(graph.uLightPosLoc,graph.lightPos);
-      gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(worldMat));
-      gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(mat));
-      gl.uniform1f(graph.u_fudgeFactorLoc,graph.fudgeFactor);
-      gl.uniform4fv(graph.a_normalLoc,normals);
-      gl.uniform3fv(graph.u_reverseLightDirectionLoc,graph.lightDirection);
-      gl.drawArrays(gl.TRIANGLES,0,points.length);
+      gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(graph.worldMat[i]));
+      gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(graph.mat[i]));
+      gl.drawArrays(gl.TRIANGLES,0,graph.pointsCount);
     }
     requestAnimationFrame(redraw);
 } 
@@ -377,110 +438,55 @@ function configPositionData(gl,graph){
     ];
     graph.lightDirection=normalize([-0.1,0.2,-0.5]);
     graph.lightPos=[10,10,-10];
-    
+    graph.pointInfoChangeFlag=true;
 }
 
 window.onload=function init(){
     this.main();
+    document.getElementById('resizeBtn').onmousedown=function(e){
+      graph.mouseDownFlag=true;
+    }
+    
+    document.getElementById('resizeBtn').onmouseup=function(e){
+      graph.mouseDownFlag=false;
+    }
+    
+    document.getElementById('resizeBtn').onmouseleave=function(e){
+      graph.mouseDownFlag=false;
+    }
+
+    document.getElementById('resizeBtn').onmousemove=function(e){
+      if(graph.mouseDownFlag){
+        if((graph.canvas.height+e.movementY)/(graph.canvas.width+e.movementX)>=1.5){
+          if(e.movementX<0)
+            graph.resizeCanvas(graph.canvas.width,graph.canvas.height+e.movementY);
+          else if(e.movementY>0)
+          graph.resizeCanvas(graph.canvas.width+e.movementX,graph.canvas.height);
+        }else
+          graph.resizeCanvas(graph.canvas.width+e.movementX,graph.canvas.height+e.movementY);
+        document.getElementById("resizeBtn").style.marginRight=(600-graph.canvas.width)+"px";
+      }
+    }
+
+    this.document.getElementById('canvas').onmousedown=function(e){
+      var bbox = graph.canvas.getBoundingClientRect();
+		  var x = 2*(event.clientX - bbox.left) * (canvas.width/bbox.width)/canvas.width-1;
+		  var y = 2*(canvas.height- (event.clientY - bbox.top) * (canvas.height/bbox.height))/canvas.height-1;
+    }
 }
 
-function projection(width, height, depth) {
-    // 注意：这个矩阵翻转了 Y 轴，所以 0 在上方
-    return [
-       2 / width, 0, 0, 0,
-       0, -2 / height, 0, 0,
-       0, 0, 2 / depth, 0,
-      -1, 1, 0, 1,
-    ];
+function resize(canvas) {
+  // 获取浏览器中画布的显示尺寸
+  var displayWidth  = canvas.clientWidth;
+  var displayHeight = canvas.clientHeight;
+ 
+  // 检尺寸是否相同
+  if (canvas.width  != displayWidth ||
+      canvas.height != displayHeight) {
+ 
+    // 设置为相同的尺寸
+    canvas.width  = displayWidth;
+    canvas.height = displayHeight;
   }
+}
 
-  var m4 = {
-    multiply: function(m1,m2){
-        var ans=[
-            0,0,0,0,
-            0,0,0,0,
-            0,0,0,0,
-            0,0,0,0,
-        ];
-        for(var i=0;i<4;i++){
-            var t=0;
-            for(var j=0;j<4;j++){
-                t+=m1[i]*m2[j];
-            }
-        }
-    },
-    translate: function(m, tx, ty, tz) {
-        return mult(m, m4.translation(tx, ty, tz));
-      },
-
-    xRotate: function(m, angleInRadians) {
-    return mult(m, m4.xRotation(angleInRadians));
-    },
-    
-    yRotate: function(m, angleInRadians) {
-    return mult(m, m4.yRotation(angleInRadians));
-    },
-    
-    zRotate: function(m, angleInRadians) {
-        console.log('ZR');
-        console.log(m4.zRotation(angleInRadians));
-    return mult(m, m4.zRotation(angleInRadians));
-    },
-    
-    scale: function(m, sx, sy, sz) {
-    return mult(m, m4.scaling(sx, sy, sz));
-    },
-
-    translation: function(tx, ty, tz) {
-      return [
-         1,  0,  0,  0,
-         0,  1,  0,  0,
-         0,  0,  1,  0,
-         tx, ty, tz, 1,
-      ];
-    },
-   
-    xRotation: function(angleInRadians) {
-      var c = Math.cos(angleInRadians);
-      var s = Math.sin(angleInRadians);
-   
-      return [
-        1, 0, 0, 0,
-        0, c, s, 0,
-        0, -s, c, 0,
-        0, 0, 0, 1,
-      ];
-    },
-   
-    yRotation: function(angleInRadians) {
-      var c = Math.cos(angleInRadians);
-      var s = Math.sin(angleInRadians);
-   
-      return [
-        c, 0, -s, 0,
-        0, 1, 0, 0,
-        s, 0, c, 0,
-        0, 0, 0, 1,
-      ];
-    },
-   
-    zRotation: function(angleInRadians) {
-      var c = Math.cos(angleInRadians);
-      var s = Math.sin(angleInRadians);
-        return [
-         c, s, 0, 0,
-        -s, c, 0, 0,
-         0, 0, 1, 0,
-         0, 0, 0, 1,
-      ];
-    },
-   
-    scaling: function(sx, sy, sz) {
-      return [
-        sx, 0,  0,  0,
-        0, sy,  0,  0,
-        0,  0, sz,  0,
-        0,  0,  0,  1,
-      ];
-    },
-  };
