@@ -605,7 +605,7 @@ function normalize( u, excludeLastComponent )
 
     var len = length( u );
 
-    if(len<=0.00001 && len>=-0.00001) len=0.00001;
+    //if(len<=0.00001 && len>=-0.00001) len=0.00001;
 
     if ( !isFinite(len) ) {
         throw "normalize: vector " + u + " has zero length";
