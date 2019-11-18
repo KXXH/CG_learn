@@ -7,7 +7,7 @@ var program;
 var graph;
 
 var positions=[
-  [3,3],
+  [-100,-300],
   [3,-3],
   [3,0],
   [-3,0],
@@ -25,6 +25,7 @@ function main(){
     graph=new Vue({
         el:"#control_panel",
         data:{
+            mesh:mesh,
             points:[],
             vertex:[],
             colors:[],
@@ -71,9 +72,9 @@ function main(){
               vec4(0,0,0,1)
             ),
             pointInfoChangeFlag:false,
-            
+            bias:[100,340,0],
             positions:[
-              [4 ,4],
+              [0 ,0],
               [4,-4],
               [4,0],
               [-4,0],
@@ -192,34 +193,14 @@ function main(){
               this.cameraX=this.cameraY=this.cameraZ=0;
             }
           },
-          /*
-            points:function(){
-                //redraw();
-            },
-            vertex:function(){
-                //redraw();
-            },
-            angleX:function(){redraw();},
-            angleY:function(){redraw();},
-            angleZ:function(){redraw();},
-            fudgeFactor:function(){redraw();},
-            tx:function(){redraw();},
-            ty:function(){redraw();},
-            tz:function(){redraw();},
-            cameraY:function(){redraw();},
-            cameraX:function(){redraw();},
-            cameraZ:function(){redraw();},
-            cameraTx:function(){redraw();},
-            cameraTy:function(){redraw();},
-            cameraTz:function(){redraw();},
-            */
         },
         computed:{
           cameraMat:function(){
+            
             var cameraMat = translate(this.cameraTx,this.cameraTy,this.cameraTz);
             cameraMat=mult(cameraMat,rotateX(this.cameraX));
             cameraMat=mult(cameraMat,rotateZ(this.cameraZ));
-            cameraMat=mult(cameraMat,rotateY(this.cameraY));
+            cameraMat=mult(cameraMat,rotateY(this.cameraY));            
             return cameraMat;
           },
           viewMat:function(){
@@ -249,28 +230,46 @@ function main(){
           worldMat:function(){
             var ans=[];
             for(var i=0;i<this.positions.length;i++){
+              var worldMat=translate(this.positions[i][0],this.positions[i][1],100);
+              worldMat = mult(worldMat,translate(this.tx,this.ty,this.tz));
+              worldMat = mult(worldMat,rotateX(this.angleX));
+              worldMat = mult(worldMat,rotateY(this.angleY));
+              worldMat = mult(worldMat,rotateZ(this.angleZ));
+              worldMat = mult(worldMat,scalem(this.scale,this.scale,this.scale));
+              worldMat = mult(worldMat,translate(-this.center[0],-this.center[1],-this.center[2]));
+              ans.push(worldMat);
+            }
+            return ans;
+          },
+          projectionMat:function(){
+            var projectionMat=ortho(-1,1,-1,1,-1,1);
+            var ratio=this.canvas.width/this.canvas.height;
+            if(this.canvasChangeFlag) this.canvasChangeFlag=false;
+            if(this.perspectiveSwitch){
+              //projectionMat=ortho(-100,100,-100,100,0,300);
+              projectionMat=mult(perspective(90,ratio,0.1,1000),projectionMat);
+            }
+            else{
+              projectionMat=ortho(-100,100,-100,100,-300,300);
+            }
+              
+            return projectionMat;
+          },
+          worldMatIT:function(){
+            var ans=[];
+            for(var i=0;i<this.worldMat.length;i++){
               var worldMat=translate(this.positions[i][0],this.positions[i][1],10);
               worldMat = mult(worldMat,translate(this.tx,this.ty,this.tz));
               worldMat = mult(worldMat,rotateX(this.angleX));
               worldMat = mult(worldMat,rotateY(this.angleY));
               worldMat = mult(worldMat,rotateZ(this.angleZ));
               worldMat = mult(worldMat,scalem(this.scale,this.scale,this.scale));
-              ans.push(worldMat);
+              worldMat = mult(worldMat,translate(-this.center[0],-this.center[1],-this.center[2]));
+              var inv=inverse4(worldMat);
+              var trans=transpose(inv);
+              ans.push(trans);
             }
-            console.log('canvas',canvas);
             return ans;
-          },
-          projectionMat:function(){
-            var projectionMat=ortho(-1,1,-1,1,-1,1);
-            var ratio=this.canvas.width/this.canvas.height;
-
-            if(this.canvasChangeFlag) this.canvasChangeFlag=false;
-
-            if(this.perspectiveSwitch)
-              projectionMat=mult(perspective(90,ratio,0.1,100),projectionMat);
-            else
-              projectionMat=ortho(-10,10,-10,10,-200,200);
-            return projectionMat;
           },
           mat:function(){
             var ans=[];
@@ -284,7 +283,34 @@ function main(){
             }
             return ans;
           },
-          
+          center:function(){
+            var minX=Number.MAX_VALUE;
+            var maxX=Number.MIN_VALUE;
+            var minY=Number.MAX_VALUE;
+            var maxY=Number.MIN_VALUE;
+            var minZ=Number.MAX_VALUE;
+            var maxZ=Number.MIN_VALUE;
+            
+            for(var i=0;i<this.mesh.indices.length;i++){
+              var idx=this.mesh.indices[i];
+              if(minX>parseFloat(this.mesh.vertices[idx*3])){
+                minX=parseFloat(this.mesh.vertices[idx*3]);
+              }else if(maxX<parseFloat(this.mesh.vertices[idx*3])){
+                maxX=parseFloat(this.mesh.vertices[idx*3]);
+              }
+              if(minY>parseFloat(this.mesh.vertices[idx*3+1])){
+                minY=parseFloat(this.mesh.vertices[idx*3+1]);
+              }else if(maxY<parseFloat(this.mesh.vertices[idx*3+1])){
+                maxY=parseFloat(this.mesh.vertices[idx*3+1]);
+              }
+              if(minZ>parseFloat(this.mesh.vertices[idx*3+2])){
+                minZ=parseFloat(this.mesh.vertices[idx*3+2]);
+              }else if(maxZ<parseFloat(this.mesh.vertices[idx*3+2])){
+                maxZ=parseFloat(this.mesh.vertices[idx*3+2]);
+              }
+            }
+            return [(minX+maxX)/2,(minY+maxY)/2,(minZ+maxZ)/2];
+          }
         }
     });
 
@@ -331,20 +357,6 @@ function main(){
     configPositionData(gl,graph);
  
     redraw();
-    /*
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.bindBuffer(gl.ARRAY_BUFFER,graph.vPositionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,flatten(points),gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER,graph.vColorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,flatten([vec4(1.0,1.0,1.0,1.0),vec4(1.0,1.0,1.0,1.0),vec4(1.0,1.0,1.0,1.0)]),gl.STATIC_DRAW);
-
-    //var colors=[];
-    
-    //gl.bindBuffer(gl.ARRAY_BUFFER,graph.vPositionBuffer);
-    //gl.bufferData(gl.ARRAY_BUFFER,flatten(points),gl.STATIC_DRAW);
-    console.log(points);
-    gl.drawArrays(gl.TRIANGLES,0,points.length);
-    */
 }
 
 function redraw(){
@@ -361,8 +373,10 @@ function redraw(){
     gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
     if(graph.pointInfoChangeFlag){
       var points=[];
+      var new_points=[];
       var colors=[];
       var normals=[];
+      /*
       for(var i=0;i<graph.vertex.length;i++){
           for(var j=0;j<graph.vertex[i].length;j++){
               points.push(graph.points[graph.vertex[i][j]]);
@@ -370,7 +384,21 @@ function redraw(){
               normals.push(graph.normals[Math.floor(i/2)]);
           }
       }
-
+      */
+     const NUM_COMPONENTS_FOR_VERTS = 3;
+      for(var i=0;i<graph.mesh.indices.length;i++){
+        var elemIdx=graph.mesh.indices[i];
+        var xyz=[];
+        for(var j=0;j<NUM_COMPONENTS_FOR_VERTS;j++){
+          xyz.push(parseFloat(graph.mesh.vertices[(elemIdx*NUM_COMPONENTS_FOR_VERTS)+j]));
+          points.push(parseFloat(graph.mesh.vertices[(elemIdx*NUM_COMPONENTS_FOR_VERTS)+j]));
+          normals.push(parseFloat(graph.mesh.vertexNormals[(elemIdx*NUM_COMPONENTS_FOR_VERTS)+j]));
+        }
+        xyz.push(1);
+        var mat=mult(graph.mat[0],xyz);
+        colors.push(vec4(1,0.5,0.0,1));
+      }
+      console.log(new_points);
       gl.bindBuffer(gl.ARRAY_BUFFER,graph.vPositionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER,flatten(points),gl.STATIC_DRAW);
       
@@ -379,14 +407,17 @@ function redraw(){
         
       gl.bindBuffer(gl.ARRAY_BUFFER,graph.a_normalBuffer);
       gl.bufferData(gl.ARRAY_BUFFER,flatten(normals),gl.STATIC_DRAW);
+
+      
       graph.pointInfoChangeFlag=false;
     }
     var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 
     for(var i=0;i<8;i++){
-      gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(graph.worldMat[i]));
+      gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(graph.worldMatIT[i]));
       gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(graph.mat[i]));
-      gl.drawArrays(gl.TRIANGLES,0,graph.pointsCount);
+      gl.drawArrays(gl.TRIANGLES,0,graph.mesh.indices.length);
+      break;
     }
     requestAnimationFrame(redraw);
 } 
