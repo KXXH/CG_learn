@@ -19,6 +19,9 @@ var positions=[
 
 function main(){
 
+  var objStr = document.getElementById('whale.obj').innerHTML;
+  var mesh = new OBJ.Mesh(objStr);
+
     graph=new Vue({
         el:"#control_panel",
         data:{
@@ -80,7 +83,8 @@ function main(){
               [-4,-4],
             ],
             mouseDownFlag:false,
-            trackMouseFlag:false
+            trackMouseFlag:false,
+            
         },
         methods:{
           onUp:function(){
@@ -468,7 +472,7 @@ window.onload=function init(){
       }
     }
 
-    this.document.getElementById('canvas').onmousedown=function(e){
+    this.document.getElementById('gl-canvas').onmousedown=function(e){
       var bbox = graph.canvas.getBoundingClientRect();
 		  var x = 2*(event.clientX - bbox.left) * (canvas.width/bbox.width)/canvas.width-1;
 		  var y = 2*(canvas.height- (event.clientY - bbox.top) * (canvas.height/bbox.height))/canvas.height-1;
