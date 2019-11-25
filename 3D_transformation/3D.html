@@ -3150,6 +3150,7 @@ void main()
                                         Oops ... your browser doesn't support the HTML5 canvas element
                                 </canvas>
                                 <div>
+                                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-y-2" style="float:left" mdui-dialog="{target: '#help_dlg'}">帮助</button>
                                         <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-y-2" style="float:right" id="resizeBtn">改变大小</button></div>
                                 <div class="mdui-center" width="600">
                                         <div class="mdui-m-t-2" style="text-align:center">
@@ -3223,55 +3224,61 @@ void main()
                         <div class="mdui-row">
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机x轴旋转</label>
-                                        <input v-model.number="cameraX" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraX" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag" ><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机y轴旋转</label>
-                                        <input v-model.number="cameraY" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraY" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag"><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机z轴旋转</label>
-                                        <input v-model.number="cameraZ" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraZ" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag"><br>
                                 </div>
 
                                 
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机x轴平移</label>
-                                        <input v-model.number="cameraTx" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraTx" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag"><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机y轴平移</label>
-                                        <input v-model.number="cameraTy" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraTy" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag"><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4">
                                         <label class="mdui-textfield-label">相机z轴平移</label>
-                                        <input v-model.number="cameraTz" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="cameraTz" step="0.5" type="number" class="mdui-textfield-input" :disabled="tourFlag"><br>
                                         
                                 </div>
+                                <label class="mdui-switch mdui-col-xs-12">自动漫游
+
+                                                <input type="checkbox" class="mdui-float-right" v-model="tourFlag"/>
+                                                <i class="mdui-switch-icon mdui-float-right"></i>
+
+                                </label>
                                 <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="cameraX=cameraY=cameraZ=0">清空相机旋转</button>
-                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="cameraTx=cameraTy=cameraTz=0">清空相机平移</button>
-                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="cameraX=cameraY=cameraZ=cameraTx=cameraTy=cameraTz=0">清空此处所有设置</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="cameraTx=cameraTy=cameraTz=0" :disabled="tourFlag">清空相机平移</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="cameraX=cameraY=cameraZ=cameraTx=cameraTy=cameraTz=0" :disabled="tourFlag">清空此处所有设置</button>
                         </div>
                         <div class="mdui-divider"></div>
                         <h2>lookAt控制</h2>
                         <div class="mdui-row">
                                         <label class="mdui-switch mdui-col-xs-12">启用lookAt锁定
 
-                                                        <input type="checkbox" class="mdui-float-right" v-model="lookAtLock"/>
+                                                        <input type="checkbox" class="mdui-float-right" v-model="lookAtLock" :disabled="tourFlag"/>
                                                         <i class="mdui-switch-icon mdui-float-right"></i>
 
                                         </label>
                                 <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
                                         <label class="mdui-textfield-label">lookAt-x轴平移</label>
-                                        <input v-model.number="lkx" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="lkx" step="0.1" type="number" class="mdui-textfield-input"  :disabled="tourFlag"><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
                                         <label class="mdui-textfield-label">lookAt-y轴平移</label>
-                                        <input v-model.number="lky" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="lky" step="0.1" type="number" class="mdui-textfield-input"  :disabled="tourFlag"><br>
                                 </div>
                                 <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
                                         <label class="mdui-textfield-label">lookAt-z轴平移</label>
-                                        <input v-model.number="lkz" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                        <input v-model.number="lkz" step="0.1" type="number" class="mdui-textfield-input"  :disabled="tourFlag"><br>
                                 </div>
                         </div>
                         <div class="mdui-divider"></div>
@@ -3291,7 +3298,21 @@ void main()
                         </div>
                         
             
-        
+                        <div class="mdui-dialog" id="help_dlg">
+                                        <div class="mdui-dialog-title">帮助</div>
+                                        <div class="mdui-dialog-content mdui-typo">
+                                                <p>使用<kbd>W</kbd>键向上移动相机</p>
+                                                <p>使用<kbd>S</kbd>键向下移动相机</p>
+                                                <p>使用<kbd>A</kbd>键向左移动相机</p>
+                                                <p>使用<kbd>D</kbd>键向右移动相机</p>
+                                                <p>使用<kbd>J</kbd>键向里移动相机</p>
+                                                <p>使用<kbd>L</kbd>键向外移动相机</p>
+                                                <p>使用<kbd>P</kbd>键切换投影方式</p>
+                                                <div class="mdui-divider"></div>
+                                                <br>
+                                                <p>使用<ins>自动漫游</ins>功能时，自动禁用相机手动控制和<code>lookAt</code>锁定。关闭该功能时，需等待当前动画归位。</p>
+                                        </div>
+                                      </div>
             
             
 </div>

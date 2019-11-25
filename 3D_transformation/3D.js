@@ -16,6 +16,7 @@ function main() {
     el: "#control_panel",
     data: {
       hasError: false,
+      tourFlag:false,
       mesh: mesh,
       vPositionBuffer: 0,
       vColorBuffer: 0,
@@ -72,9 +73,9 @@ function main() {
         var t = rotateX(-this.cameraX);
         t = mult(t, rotateY(-this.cameraY));
         t = mult(t, rotateZ(-this.cameraZ));
-        this.cameraTz += t[2][2];
-        this.cameraTy += t[2][1];
-        this.cameraTx += t[2][0];
+        this.cameraTz += t[1][2];
+        this.cameraTy += t[1][1];
+        this.cameraTx += t[1][0];
 
       },
       onDown: function () {
@@ -83,9 +84,9 @@ function main() {
         var t = rotateX(-this.cameraX);
         t = mult(t, rotateY(-this.cameraY));
         t = mult(t, rotateZ(-this.cameraZ));
-        this.cameraTz -= t[2][2];
-        this.cameraTy -= t[2][1];
-        this.cameraTx -= t[2][0];
+        this.cameraTz -= t[1][2];
+        this.cameraTy -= t[1][1];
+        this.cameraTx -= t[1][0];
 
 
 
@@ -116,6 +117,23 @@ function main() {
         this.canvasChangeFlag = true;
         resize(graph.canvas);
         //gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
+      },
+      onIn:function(){
+        var t = rotateX(-this.cameraX);
+        t = mult(t, rotateY(-this.cameraY));
+        t = mult(t, rotateZ(-this.cameraZ));
+        this.cameraTz += t[2][2];
+        this.cameraTy += t[2][1];
+        this.cameraTx += t[2][0];
+      },
+      onOut:function(){
+        //this.cameraCTM=mult(translate(0,0,-1),this.cameraCTM);
+        var t = rotateX(-this.cameraX);
+        t = mult(t, rotateY(-this.cameraY));
+        t = mult(t, rotateZ(-this.cameraZ));
+        this.cameraTz -= t[2][2];
+        this.cameraTy -= t[2][1];
+        this.cameraTx -= t[2][0];
       }
 
     }
@@ -130,6 +148,9 @@ function main() {
           case 40: case 83: graph.onDown(); break;
           case 37: case 65: graph.onLeft(); break;
           case 39: case 68: graph.onRight(); break;
+          case 80: graph.perspectiveSwitch=!graph.perspectiveSwitch;break;
+          case 74:graph.onIn();break;
+          case 76:graph.onOut();break;
           case 81: graph.cameraY -= 0.5; graph.cameraCTM = mult(rotateY(-0.5), graph.cameraCTM); break;
           case 69: graph.cameraY += 0.5; graph.cameraCTM = mult(rotateY(0.5), graph.cameraCTM); break;
         }
@@ -145,6 +166,11 @@ function main() {
           this.cameraX = this.cameraY = this.cameraZ = 0;
         }
       },
+      tourFlag: function(newValue){
+        if(newValue){
+          tour();
+        }
+      }
     },
     computed: {
       cameraMat: function () {
@@ -363,6 +389,7 @@ function redraw() {
       gl.drawArrays(gl.TRIANGLES, 0, graph.mesh.indices.length);
     }
     requestAnimationFrame(redraw);
+    TWEEN.update();
   } catch (e) {
     mdui.alert("您当前的输入值可能会导致发生除以0等数学上的非法操作，因此现在已经暂停了图形输出。当您修改完成后，可以点击下方重新启动渲染", "数学错误");
     console.log(e);
@@ -428,4 +455,54 @@ function resize(canvas) {
 function changeMesh(mesh) {
   graph.mesh = mesh;
   graph.pointInfoChangeFlag = true;
+}
+
+function tour(){
+  if(!graph.tourFlag) return;
+  graph.lookAtLock=true;
+
+  var tourX=Math.random()*100-50;
+  var tourY=Math.random()*100-50;
+  var tourZ=Math.random()*100+100;
+
+  new TWEEN.Tween(graph).to({cameraTy:tourY},1000).chain(
+    new TWEEN.Tween(graph).to({cameraTx:tourX},1000).chain(
+      new TWEEN.Tween(graph).to({cameraTz:tourZ},1000).chain(
+        new TWEEN.Tween(graph).to({cameraTy:0},1000).chain(
+          new TWEEN.Tween(graph).to({cameraTz:0},1000).chain(
+            new TWEEN.Tween(graph).to({cameraTx:0},1000).onComplete(
+              tour
+            )
+          )
+        )
+      )
+    )
+  ).start();
+
+
+/*
+  new TWEEN.Tween(graph).to({cameraTy:20},1000).chain(
+    new TWEEN.Tween(graph).to({cameraTx:100},1000).chain(
+      new TWEEN.Tween(graph).to({cameraTz:200},5000).chain(
+        new TWEEN.Tween(graph).to({cameraTz:0},1000).chain(
+          new TWEEN.Tween(graph).to({cameraTy:0},1000).chain(
+            new TWEEN.Tween(graph).to({cameraTx:0},5000).chain(
+              new TWEEN.Tween(graph).to({cameraTy:100},1000).chain(
+                new TWEEN.Tween(graph).to({cameraTx:-50},500).chain(
+                  new TWEEN.Tween(graph).to({cameraTz:130},5000).chain(
+                    new TWEEN.Tween(graph).to({cameraTy:0},500).chain(
+                      new TWEEN.Tween(graph).to({cameraTz:0},5000).chain(
+                        new TWEEN.Tween(graph).to({cameraTx:0},1000)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ).start();
+    */
 }
