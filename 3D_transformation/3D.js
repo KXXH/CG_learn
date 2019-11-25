@@ -6,16 +6,6 @@ var program;
 
 var graph;
 
-var positions=[
-  [-100,-300],
-  [3,-3],
-  [3,0],
-  [-3,0],
-  [0,3],
-  [0,-3],
-  [-3,3],
-  [-3,-3],
-];
 
 function main(){
 
@@ -64,29 +54,24 @@ function main(){
             lkz:100,
             canvas:document.getElementById("gl-canvas"),
             canvasChangeFlag:false,
-            goSwitch:false,
             lookAtLock:false,
-            cameraCTM:mat4(
-              vec4(1,0,0,0),
-              vec4(0,1,0,0),
-              vec4(0,0,1,0),
-              vec4(0,0,0,1)
-            ),
             pointInfoChangeFlag:false,
-            bias:[100,340,0],
+
             positions:[
-              [0 ,0],
-              [4,-4],
-              [4,0],
-              [-4,0],
-              [0,4],
-              [0,-4],
-              [-4,4],
-              [-4,-4],
+              [40 ,40],
+              [40,-40],
+              [40,0],
+              [-40,0],
+              [0,40],
+              [0,-40],
+              [-40,40],
+              [-40,-40],
+              [0,0]
             ],
             mouseDownFlag:false,
             trackMouseFlag:false,
-            
+            texcoordLocation:0,
+            texture:0
         },
         methods:{
           onUp:function(){
@@ -96,8 +81,6 @@ function main(){
             this.cameraTz+=t[2][2];
             this.cameraTy+=t[2][1];
             this.cameraTx+=t[2][0];
-            this.cameraCTM=mult(translate(t[2][0],t[2][1],t[2][2]),this.cameraCTM);
-
 
           },
           onDown:function(){
@@ -109,7 +92,6 @@ function main(){
             this.cameraTz-=t[2][2];
             this.cameraTy-=t[2][1];
             this.cameraTx-=t[2][0];
-            this.cameraCTM=mult(translate(-t[2][0],-t[2][1],-t[2][2]),this.cameraCTM);
 
             
             
@@ -122,7 +104,7 @@ function main(){
             this.cameraTz-=t[0][2];
             this.cameraTy-=t[0][1];
             this.cameraTx-=t[0][0];
-            this.cameraCTM=mult(translate(-t[0][0],-t[0][1],-t[0][2]),this.cameraCTM);
+
           },
           onRight:function(){
             //this.cameraCTM=mult(translate(1,0,0),this.cameraCTM);
@@ -132,8 +114,7 @@ function main(){
             this.cameraTz+=t[0][2];
             this.cameraTy+=t[0][1];
             this.cameraTx+=t[0][0];
-            this.cameraCTM=mult(translate(t[0][0],t[0][1],t[0][2]),this.cameraCTM);
-          
+        
           },
           resizeCanvas:function(width,height){
             this.canvas.width=width;
@@ -322,10 +303,14 @@ function main(){
     gl.bindBuffer(gl.ARRAY_BUFFER,graph.a_normalBuffer);
     gl.bufferData(gl.ARRAY_BUFFER,0,gl.STATIC_DRAW);
 
+
     graph.a_normalBufferLoc=gl.getAttribLocation(program,"a_normal");
     gl.vertexAttribPointer(graph.a_normalBufferLoc,3,gl.FLOAT,false,0,0);
     gl.enableVertexAttribArray(graph.a_normalBufferLoc);
-    
+    graph.texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,graph.texture);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,160,0,255]));
+
     graph.uMatrixLoc = gl.getUniformLocation(program,"uMatrix");
     graph.uWorldLoc = gl.getUniformLocation(program,"uWorld");
     graph.u_fudgeFactorLoc = gl.getUniformLocation(program,"u_fudgeFactor");
@@ -380,11 +365,10 @@ function redraw(){
       
       graph.pointInfoChangeFlag=false;
     }
-    for(var i=0;i<8;i++){
+    for(var i=0;i<graph.worldMat.length;i++){
       gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(graph.worldMatIT[i]));
       gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(graph.mat[i]));
       gl.drawArrays(gl.TRIANGLES,0,graph.mesh.indices.length);
-      break;
     }
     requestAnimationFrame(redraw);
     }catch(e){
@@ -498,3 +482,7 @@ function resize(canvas) {
   }
 }
 
+function changeMesh(mesh){
+  graph.mesh=mesh;
+  graph.pointInfoChangeFlag=true;
+}
