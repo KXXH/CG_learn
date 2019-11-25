@@ -3133,6 +3133,7 @@ void main()
                 s 4
                 f 23/608/678 216/1136/677 137/607/1268
                 
+                
         </script>
         <div class="mdui-appbar mdui-appbar-fixed">
                 <div class="mdui-toolbar mdui-color-teal">
@@ -3147,7 +3148,8 @@ void main()
                                 <canvas id="gl-canvas" class="mdui-img-fluid mdui-center mdui-img-rounded" width="600" height="600">
                                         Oops ... your browser doesn't support the HTML5 canvas element
                                 </canvas>
-                                <div><button style="float: right;" id="resizeBtn">resize</button></div>
+                                <div>
+                                        <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-y-2" style="float:right" id="resizeBtn">改变大小</button></div>
                                 <div class="mdui-center" width="600">
                                         <div class="mdui-m-t-2" style="text-align:center">
                                                 
@@ -3158,30 +3160,133 @@ void main()
                         <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
                                 
                             <h1>控制面板</h1>
-                            X_r<input v-model.number="angleX" step="0.5" type="number"><br>
-                            Y_r<input v-model.number="angleY" step="0.5" type="number"><br>
-                            Z_r<input v-model.number="angleZ" step="0.5" type="number"><br>
-                            scale<input v-model.number="scale" step="0.1" type="number"><br>
-                            tx<input v-model.number="tx" step="0.1" type="number"><br>
-                            ty<input v-model.number="ty" step="0.1" type="number"><br>
-                            tz<input v-model.number="tz" step="0.1" type="number"><br>
-                            lightX<input v-model.number="lightPos[0]" step="0.1" type="number"><br>
-                            lightY<input v-model.number="lightPos[1]" step="0.1" type="number"><br>
-                            lightZ<input v-model.number="lightPos[2]" step="0.1" type="number"><br>
-                            cameraX<input v-model.number="cameraX" step="0.5" type="number"><br>
-                            cameraY<input v-model.number="cameraY" step="0.5" type="number"><br>
-                            cameraZ<input v-model.number="cameraZ" step="0.5" type="number"><br>
-                            cameraTx<input v-model.number="cameraTx" step="0.5" type="number"><br>
-                            cameraTy<input v-model.number="cameraTy" step="0.5" type="number"><br>
-                            cameraTz<input v-model.number="cameraTz" step="0.5" type="number"><br>
-                            lkx<input v-model.number="lkx" step="0.1" type="number"><br>
-                            lky<input v-model.number="lky" step="0.1" type="number"><br>
-                            lkz<input v-model.number="lkz" step="0.1" type="number"><br>
-                            perspectiveSwitch<input type="checkbox" id="checkbox" v-model="perspectiveSwitch">
-                            goSwitch<input type="checkbox" id="checkbox" v-model="goSwitch">
-                            lookAtLock<input type="checkbox" id="checkbox" v-model="lookAtLock">
+                            <div class="mdui-divider"></div>
+                            <h2>图形自身变换</h2>
+                            <div class="mdui-row">
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">x轴旋转</label>
+                                        <input v-model.number="angleX" step="0.5" type="number" class="mdui-textfield-input" max="360" min="-360"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">y轴旋转</label>
+                                        <input v-model.number="angleY" step="0.5" type="number" class="mdui-textfield-input" max="360" min="-360"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">z轴旋转</label>
+                                        <input v-model.number="angleZ" step="0.5" type="number" class="mdui-textfield-input" max="360" min="-360"><br>
+                                </div>
+                                
+                                <div>
+                                        <label>图形缩放</label>
+                                0.2<input step="0.01" max="2" min="0.2" type="range"  v-model.number="scale">2<br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">x轴平移</label>
+                                        <input v-model.number="tx" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">y轴平移</label>
+                                        <input v-model.number="ty" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">z轴平移</label>
+                                        <input v-model.number="tz" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="angleX=angleY=angleZ=0">清空旋转</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="scale=1">清空缩放</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="tx=ty=tz=0">清空平移</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="tx=ty=tz=angleX=angleY=angleZ=0;scale=1">清空此处所有设置</button>
+                            </div>
+                            <label >                           
+                        </label>
+                        <div class="mdui-divider"></div>
+                        <h2>光照控制</h2>
+                        <div class="mdui-row">
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">光源x轴平移</label>
+                                        <input v-model.number="lightPos[0]" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">光源y轴平移</label>
+                                        <input v-model.number="lightPos[1]" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">光源z轴平移</label>
+                                        <input v-model.number="lightPos[2]" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="lightPos=[10,10,1000]">清空光照</button>
                         </div>
 
+                        <div class="mdui-divider"></div>
+                        <h2>相机控制</h2>
+                        <div class="mdui-row">
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机x轴旋转</label>
+                                        <input v-model.number="cameraX" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机y轴旋转</label>
+                                        <input v-model.number="cameraY" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机z轴旋转</label>
+                                        <input v-model.number="cameraZ" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                </div>
+
+                                
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机x轴平移</label>
+                                        <input v-model.number="cameraTx" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机y轴平移</label>
+                                        <input v-model.number="cameraTy" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4">
+                                        <label class="mdui-textfield-label">相机z轴平移</label>
+                                        <input v-model.number="cameraTz" step="0.5" type="number" class="mdui-textfield-input"><br>
+                                        
+                                </div>
+                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="cameraX=cameraY=cameraZ=0">清空相机旋转</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-m-b-2 mdui-ripple" v-on:click="cameraTx=cameraTy=cameraTz=0">清空相机平移</button>
+                                <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-b-2" v-on:click="cameraX=cameraY=cameraZ=cameraTx=cameraTy=cameraTz=0">清空此处所有设置</button>
+                        </div>
+                        <div class="mdui-divider"></div>
+                        <h2>lookAt控制</h2>
+                        <div class="mdui-row">
+                                        <label class="mdui-switch mdui-col-xs-12">启用lookAt锁定
+                                                        <input type="checkbox" class="mdui-float-right" v-model="lookAtLock"/>
+                                                        <i class="mdui-switch-icon"></i>
+                                        </label>
+                                <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
+                                        <label class="mdui-textfield-label">lookAt-x轴平移</label>
+                                        <input v-model.number="lkx" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
+                                        <label class="mdui-textfield-label">lookAt-y轴平移</label>
+                                        <input v-model.number="lky" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                                <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
+                                        <label class="mdui-textfield-label">lookAt-z轴平移</label>
+                                        <input v-model.number="lkz" step="0.1" type="number" class="mdui-textfield-input"><br>
+                                </div>
+                        </div>
+                        <div class="mdui-divider"></div>
+                        <h2>投影控制</h2>
+                        <div class="mdui-row">
+                                        <label class="mdui-switch mdui-col-xs-12">启用透视投影
+                                                        <input type="checkbox" class="mdui-float-right" v-model="perspectiveSwitch"/>
+                                                        <i class="mdui-switch-icon"></i>
+                                        </label>
+                        </div>
+                        
+                        <div v-if="hasError">
+                                        <div class="mdui-divider"></div>
+                                        <button class="mdui-btn mdui-color-indigo mdui-ripple mdui-m-y-2" onclick="graph.hasError=false;requestAnimationFrame(redraw);">重新启动渲染</button>
+                        </div>
+
+                        </div>
+                        
             
         
             

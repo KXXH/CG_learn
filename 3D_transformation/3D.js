@@ -25,6 +25,7 @@ function main(){
     graph=new Vue({
         el:"#control_panel",
         data:{
+          hasError:false,
             mesh:mesh,
             points:[],
             vertex:[],
@@ -60,7 +61,7 @@ function main(){
             scale:1,
             lkx:0,
             lky:0,
-            lkz:0,
+            lkz:100,
             canvas:document.getElementById("gl-canvas"),
             canvasChangeFlag:false,
             goSwitch:false,
@@ -92,18 +93,11 @@ function main(){
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
-            //t=scale(0.5,t);
-            if(graph.goSwitch){
-              this.cameraTz+=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-              this.cameraTy+=0.5*Math.sin(radians(this.cameraX));
-              this.cameraTx+=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-            }
-            else{
-              this.cameraTz+=t[2][2];
-              this.cameraTy+=t[2][1];
-              this.cameraTx+=t[2][0];
-              this.cameraCTM=mult(translate(t[2][0],t[2][1],t[2][2]),this.cameraCTM);
-            }
+            this.cameraTz+=t[2][2];
+            this.cameraTy+=t[2][1];
+            this.cameraTx+=t[2][0];
+            this.cameraCTM=mult(translate(t[2][0],t[2][1],t[2][2]),this.cameraCTM);
+
 
           },
           onDown:function(){
@@ -112,17 +106,11 @@ function main(){
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
-            //t=scale(-0.5,t);
-            if(graph.goSwitch){
-              this.cameraTy-=0.5*Math.sin(radians(this.cameraX));
-              this.cameraTz-=0.5*Math.cos(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-              this.cameraTx-=0.5*Math.sin(radians(this.cameraY))*Math.cos(radians(this.cameraX));
-            }else{
-              this.cameraTz-=t[2][2];
-              this.cameraTy-=t[2][1];
-              this.cameraTx-=t[2][0];
-              this.cameraCTM=mult(translate(-t[2][0],-t[2][1],-t[2][2]),this.cameraCTM);
-            }
+            this.cameraTz-=t[2][2];
+            this.cameraTy-=t[2][1];
+            this.cameraTx-=t[2][0];
+            this.cameraCTM=mult(translate(-t[2][0],-t[2][1],-t[2][2]),this.cameraCTM);
+
             
             
           },
@@ -131,34 +119,21 @@ function main(){
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
-            if(graph.goSwitch){
-              this.cameraTx-=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
-              this.cameraTy-=0.5*Math.sin(radians(this.cameraZ));
-              this.cameraTz+=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
-            }else{
-              this.cameraTz-=t[0][2];
-              this.cameraTy-=t[0][1];
-              this.cameraTx-=t[0][0];
-              this.cameraCTM=mult(translate(-t[0][0],-t[0][1],-t[0][2]),this.cameraCTM);
-            }
-            
-
+            this.cameraTz-=t[0][2];
+            this.cameraTy-=t[0][1];
+            this.cameraTx-=t[0][0];
+            this.cameraCTM=mult(translate(-t[0][0],-t[0][1],-t[0][2]),this.cameraCTM);
           },
           onRight:function(){
             //this.cameraCTM=mult(translate(1,0,0),this.cameraCTM);
             var t=rotateX(-this.cameraX);
             t=mult(t,rotateY(-this.cameraY));
             t=mult(t,rotateZ(-this.cameraZ));
-            if(graph.goSwitch){
-              this.cameraTx+=0.5*Math.cos(radians(this.cameraZ))*Math.cos(radians(this.cameraY));
-              this.cameraTy+=0.5*Math.sin(radians(this.cameraZ));
-              this.cameraTz-=0.5*Math.cos(radians(this.cameraZ))*Math.sin(radians(this.cameraY));
-            }else{
-              this.cameraTz+=t[0][2];
-              this.cameraTy+=t[0][1];
-              this.cameraTx+=t[0][0];
-              this.cameraCTM=mult(translate(t[0][0],t[0][1],t[0][2]),this.cameraCTM);
-            }
+            this.cameraTz+=t[0][2];
+            this.cameraTy+=t[0][1];
+            this.cameraTx+=t[0][0];
+            this.cameraCTM=mult(translate(t[0][0],t[0][1],t[0][2]),this.cameraCTM);
+          
           },
           resizeCanvas:function(width,height){
             this.canvas.width=width;
@@ -174,6 +149,7 @@ function main(){
           document.onkeydown=function(e){
             let key = window.event.keyCode;
             console.log(key);
+            
             switch(key){
               case 38:case 87:graph.onUp();break;
               case 40:case 83:graph.onDown();break;
@@ -183,6 +159,7 @@ function main(){
               case 69:graph.cameraY+=0.5;graph.cameraCTM=mult(rotateY(0.5),graph.cameraCTM);break;
             }
           };
+
         },
         watch:{
           lightPos:function(){
@@ -250,7 +227,7 @@ function main(){
               projectionMat=mult(perspective(90,ratio,0.1,1000),projectionMat);
             }
             else{
-              projectionMat=ortho(-100,100,-100,100,-300,300);
+              projectionMat=ortho(-100,100,-100,100,300,-300);
             }
               
             return projectionMat;
@@ -360,9 +337,9 @@ function main(){
 }
 
 function redraw(){
-    resize(graph.canvas);
+    try{
+      resize(graph.canvas);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
     //gl.viewport( 0, 0, graph.canvas.width, graph.canvas.height );
     if(graph.canvas.height>graph.canvas.width){
@@ -376,15 +353,7 @@ function redraw(){
       var new_points=[];
       var colors=[];
       var normals=[];
-      /*
-      for(var i=0;i<graph.vertex.length;i++){
-          for(var j=0;j<graph.vertex[i].length;j++){
-              points.push(graph.points[graph.vertex[i][j]]);
-              colors.push(graph.colors[Math.floor(i/2)]);
-              normals.push(graph.normals[Math.floor(i/2)]);
-          }
-      }
-      */
+
      const NUM_COMPONENTS_FOR_VERTS = 3;
       for(var i=0;i<graph.mesh.indices.length;i++){
         var elemIdx=graph.mesh.indices[i];
@@ -411,8 +380,6 @@ function redraw(){
       
       graph.pointInfoChangeFlag=false;
     }
-    var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-
     for(var i=0;i<8;i++){
       gl.uniformMatrix4fv(graph.uWorldLoc,false,flatten(graph.worldMatIT[i]));
       gl.uniformMatrix4fv(graph.uMatrixLoc,false,flatten(graph.mat[i]));
@@ -420,6 +387,12 @@ function redraw(){
       break;
     }
     requestAnimationFrame(redraw);
+    }catch(e){
+      mdui.alert("您当前的输入值可能会导致发生除以0等数学上的非法操作，因此现在已经暂停了图形输出。当您修改完成后，可以点击下方重新启动渲染","数学错误");
+      console.log(e);
+      graph.hasError=true;
+    }
+    
 } 
 
 function configPositionData(gl,graph){
@@ -472,7 +445,7 @@ function configPositionData(gl,graph){
         vec4(0.0,0.0,0.0,1.0),//黑8
     ];
     graph.lightDirection=normalize([-0.1,0.2,-0.5]);
-    graph.lightPos=[10,10,-10];
+    graph.lightPos=[500,10,-1000];
     graph.pointInfoChangeFlag=true;
 }
 
@@ -499,7 +472,7 @@ window.onload=function init(){
           graph.resizeCanvas(graph.canvas.width+e.movementX,graph.canvas.height);
         }else
           graph.resizeCanvas(graph.canvas.width+e.movementX,graph.canvas.height+e.movementY);
-        document.getElementById("resizeBtn").style.marginRight=(600-graph.canvas.width)+"px";
+        document.getElementById("resizeBtn").style.marginRight=Math.floor((600-graph.canvas.width)/2)+"px";
       }
     }
 
