@@ -8,10 +8,10 @@
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec4 vPosition;
-attribute vec4 vColor;
+
 attribute vec3 a_normal;
 attribute vec2 a_texcoord;
-varying vec4 fColor;
+
 varying vec3 v_normal;
 varying vec2 v_texcoord;
 uniform mat4 uMatrix;
@@ -25,7 +25,6 @@ void main()
 
     float zToDivideBy = 1.0 + vPosition.z * 0.05;
 
-    fColor = vColor;
     vec3 surfaceWorldPos=(uWorld*vPosition).xyz;
     v_normal=mat3(uWorld)*a_normal;
     v_surfaceToLight=uLightPos-surfaceWorldPos;
@@ -35,11 +34,10 @@ void main()
 
 <script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
-varying vec4 fColor;
+
 varying vec3 v_normal;
 varying vec2 v_texcoord;
 varying vec3 v_surfaceToLight;
-uniform vec3 u_reverseLightDirection;
 uniform sampler2D u_texture;
 void main()
 {
@@ -3258,8 +3256,10 @@ void main()
                         <h2>lookAt控制</h2>
                         <div class="mdui-row">
                                         <label class="mdui-switch mdui-col-xs-12">启用lookAt锁定
+
                                                         <input type="checkbox" class="mdui-float-right" v-model="lookAtLock"/>
-                                                        <i class="mdui-switch-icon"></i>
+                                                        <i class="mdui-switch-icon mdui-float-right"></i>
+
                                         </label>
                                 <div class="mdui-textfield mdui-col-xs-4" v-if="lookAtLock">
                                         <label class="mdui-textfield-label">lookAt-x轴平移</label>
@@ -3279,7 +3279,7 @@ void main()
                         <div class="mdui-row">
                                         <label class="mdui-switch mdui-col-xs-12">启用透视投影
                                                         <input type="checkbox" class="mdui-float-right" v-model="perspectiveSwitch"/>
-                                                        <i class="mdui-switch-icon"></i>
+                                                        <i class="mdui-switch-icon mdui-float-right"></i>
                                         </label>
                         </div>
                         
