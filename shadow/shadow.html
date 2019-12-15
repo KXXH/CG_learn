@@ -104,7 +104,35 @@ void main()
     
 }
 
+
+
+
+
 </script>
+
+
+<script id="hit-fragment-shader" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    varying vec3 v_normal;
+    varying vec2 v_texcoord;
+    varying vec3 v_surfaceToLight;
+    varying vec4 v_PositionFromLight;
+    uniform vec4 v_Color;
+    uniform sampler2D u_texture;
+    uniform sampler2D u_ShadowMap;
+    
+    void main()
+    {
+        gl_FragColor=v_Color;
+        
+    }
+    
+    
+    
+    
+    
+    </script>
 
 <script type="text/javascript" src="../Common/webgl-utils.js"></script>
 <script type="text/javascript" src="../Common/initShaders.js"></script>

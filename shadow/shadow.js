@@ -5,6 +5,7 @@ function main(){
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
     var programInfo = twgl.createProgramInfo(gl, ["vertex-shader", "fragment-shader"]);
     var shadow_programInfo=twgl.createProgramInfo(gl,["vertex-shader-shadow","fragment-shader-shadow"]);
+    var hit_programInfo=twgl.createProgramInfo(gl,["vertex-shader","hit-fragment-shader"]);
 
     var objStr = document.getElementById('cat.obj').innerHTML;
     var mesh = new OBJ.Mesh(objStr);
@@ -57,13 +58,33 @@ function main(){
     board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
     cat_uniforms.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),center(mesh));
     const fbi = twgl.createFramebufferInfo(gl,attachments,512,512);
+    const fbi2 = twgl.createFramebufferInfo(gl,attachments,canvas.width,canvas.height);
     //board_uniform.u_ShadowMap=cat_uniforms.u_ShadowMap=fbi.attachments[0];
     light_uniform.u_ShadowMap=fbi.attachments[0];
     gl.activeTexture(gl.TEXTURE0);
     twgl.setUniforms(light_uniform);
     gl.enable(gl.DEPTH_TEST);
     function render(){
+        //绘制hit帧
+        twgl.bindFramebufferInfo(gl,fbi2);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);  
+        gl.useProgram(hit_programInfo.program );
+        twgl.setUniforms(hit_programInfo,light_uniform);
+        cat_uniforms.uView=twgl.m4.lookAt([0,0,-40],[10,10,20],[0,1,0]);
+        cat_uniforms.uProjection=twgl.m4.perspective(90,1,0.1,1000);
+        twgl.setBuffersAndAttributes(gl, hit_programInfo, catBufferInfo);
+        twgl.setUniforms(hit_programInfo, cat_uniforms);
         
+        twgl.drawBufferInfo(gl, catBufferInfo);
+
+        twgl.setBuffersAndAttributes(gl,hit_programInfo,boardBufferInfo);
+        board_uniform.uView=twgl.m4.lookAt([0,0,-40],[10,10,20],[0,1,0]);
+        board_uniform.uProjection=twgl.m4.perspective(90,1,0.1,1000);
+        board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
+        twgl.setUniforms(hit_programInfo, board_uniform);
+        twgl.drawBufferInfo(gl,boardBufferInfo);
+
+        //绘制阴影
         twgl.bindFramebufferInfo(gl,fbi);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         //twgl.bindFramebufferInfo(gl,null);
@@ -119,6 +140,7 @@ function main(){
         
         */
         
+        //绘制可见帧
         twgl.bindFramebufferInfo(gl,null);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(programInfo.program);
@@ -144,7 +166,7 @@ function main(){
         board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
         twgl.setUniforms(programInfo,light_uniform);
         twgl.setUniforms(programInfo, board_uniform);
-        twgl.drawBufferInfo(gl,boardBufferInfo)
+        twgl.drawBufferInfo(gl,boardBufferInfo);
         
         requestAnimationFrame(render);
     }
