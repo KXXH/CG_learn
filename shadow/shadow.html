@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
 
-<title>3D图形变换</title>
+<title>阴影，贴图，和更逼真的光照</title>
 
 <script id="vertex-shader-shadow" type="x-shader/x-vertex">
     attribute vec4 vPosition;
@@ -12,15 +12,18 @@
     uniform mat4 uWorld;
     uniform mat4 uView;
     uniform mat4 uProjection;
-    
+    uniform mat4 uMat;
+
     void main()
     {
         gl_Position = uProjection*uView*uWorld*uModel*vPosition;
+        gl_Position=uMat*vPosition;
     }
 </script>
 
 <script id="fragment-shader-shadow" type="x-shader/x-fragment">
     precision mediump float;
+    uniform vec4 v_Color;
     float pow(float x){
         float ans=x;
         for(int i=0;i<100;i++){
@@ -31,7 +34,9 @@
     
     void main()
     {
-        gl_FragColor =  vec4(0.0,0.0,0.0,pow(gl_FragCoord.z)); 
+        //gl_FragColor =  vec4(0.0,0.0,0.0,pow(gl_FragCoord.z)); 
+        gl_FragColor =  vec4(0.0,0.0,0.0,gl_FragCoord.z); 
+        //gl_FragColor=v_Color;
     }
     </script>
 
@@ -42,8 +47,8 @@ attribute vec3 a_normal;
 attribute vec2 a_texcoord;
 
 varying vec3 v_normal;
-varying vec2 v_texcoord;
 
+uniform vec3 u_viewWorldPosition;
 uniform mat4 uModel;
 uniform mat4 uWorld;
 uniform mat4 uView;
@@ -54,6 +59,8 @@ uniform vec3 uLightPos;
 
 varying vec3 v_surfaceToLight;
 varying vec4 v_PositionFromLight;
+varying vec3 v_surfaceToView;
+varying vec2 v_texcoord;
 void main()
 {
     gl_Position = uProjection*uView*uWorld*uModel*vPosition;
@@ -61,6 +68,8 @@ void main()
     v_normal=mat3(uWorld*uModel)*a_normal;
     v_surfaceToLight=uLightPos-surfaceWorldPos;
     v_PositionFromLight = uMVPFromLight * vPosition;
+    v_surfaceToView = u_viewWorldPosition - surfaceWorldPos;
+    v_texcoord=a_texcoord;
 }
 </script>
 
@@ -72,10 +81,13 @@ varying vec3 v_normal;
 varying vec2 v_texcoord;
 varying vec3 v_surfaceToLight;
 varying vec4 v_PositionFromLight;
+varying vec3 v_surfaceToView;
 uniform vec4 v_Color;
+uniform vec4 u_specular;
+uniform vec4 u_ambient;
+uniform float u_shininess;
 uniform sampler2D u_texture;
 uniform sampler2D u_ShadowMap;
-
 
 float pow(float x){
     float ans=x;
@@ -87,19 +99,40 @@ float pow(float x){
 
 void main()
 {
+    vec4 diffuseColor = texture2D(u_texture,v_texcoord);
     vec3 shadowCoord = (v_PositionFromLight.xyz/v_PositionFromLight.w)/2.0 + 0.5;
-
+    //shadowCoord = (v_PositionFromLight.xyz/v_PositionFromLight.w);
+    bool inRange=shadowCoord.x>=-1.0 && shadowCoord.x<=1.0 && shadowCoord.y>=-1.0 &&shadowCoord.y<=1.0;
     vec3 normal=normalize(v_normal);
     vec3 surfaceToLightDirection=normalize(v_surfaceToLight);
+    vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+    vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
     float light = dot(normal,surfaceToLightDirection);
+    float specular = dot(normal, halfVector);
+    if(specular<=0.0){
+        specular=0.0;
+    }
+    else{
+        specular=pow(specular,u_shininess);
+    }
     vec4 rgbaDepth = texture2D(u_ShadowMap, shadowCoord.xy);
     float depth = rgbaDepth.a;
-    float visibility = (shadowCoord.z > depth + 0.005) ? 0.5 : 1.0;
+    //float visibility = (v_PositionFromLight.z > depth + 0.005) ? 0.5 : 1.0;
+    float visibility = (shadowCoord.z > depth + 0.001 ) ? 0.4 : 1.0;
     //vec4 v_Color =  vec4(1.0,1.0,1.0,1); 
-    gl_FragColor=v_Color;
-    gl_FragColor.rgb*=light*visibility;
-    //gl_FragColor=vec4(depth,depth,depth,1);
-    //sgl_FragColor=vec4(vec3(gl_FragCoord.z), 1.0);
+    //gl_FragColor=v_Color;
+
+    gl_FragColor.rgb = diffuseColor.rgb*light;    //漫反射项   
+    gl_FragColor.rgb*=visibility;   //阴影覆盖在漫反射项
+    gl_FragColor.rgb += specular*u_specular.rgb;    //镜面反射项
+    gl_FragColor += diffuseColor*u_ambient; //环境光项
+    
+    //gl_FragColor=vec4(vec3(pow(depth)),1);
+    //gl_FragColor=vec4(vec3(visibility),1);
+    //gl_FragColor=rgbaDepth;
+    //gl_FragColor=vec4(vec3(pow(shadowCoord.z)), 1.0);
+    //gl_FragColor=vec4(vec3(v_PositionFromLight.z/v_PositionFromLight.w), 1.0);
+    //gl_FragColor=vec4(vec3(gl_FragCoord.z), 1.0);
     //gl_FragColor = vec4(vec3(pow(gl_FragColor.z)), 1.0);
     
 }
@@ -3224,7 +3257,7 @@ void main()
         </script>
         <div class="mdui-appbar mdui-appbar-fixed">
                 <div class="mdui-toolbar mdui-color-teal">
-                  <a href="javascript:;" class="mdui-typo-headline">3D图形变换</a>
+                  <a href="javascript:;" class="mdui-typo-headline">阴影，贴图，和更逼真的光照</a>
                   <a href="javascript:;" class="mdui-typo-title"></a>
                   <div class="mdui-toolbar-spacer"></div>
                 </div>
@@ -3248,7 +3281,9 @@ void main()
                         <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
                                 
                             <h1>控制面板</h1>
-
+                            <label class="mdui-slider">
+                                <input type="range" id="cameraAngle" step="0.1" min="-90" max="90"/>
+                              </label>
             
             
 </div>
