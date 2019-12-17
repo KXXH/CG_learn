@@ -10,7 +10,7 @@ var cat_uniforms={
   uMVPFromLight:twgl.m4.identity(),
   v_Color:[1,0.8,0,1],
   u_texture:undefined,
-  u_ambient:[0,0,0,1],
+  u_ambient:[0.1,0.1,0.1,1],
   u_specular:[1,1,1,1],
   u_shininess:120
 };
@@ -18,6 +18,7 @@ var light_uniform={
   uLightPos:[-10,10,-120],
   u_ShadowMap:0.0,
   u_lightColor:[1,1,1,1],
+  texelSize:1024
 }
 var board_uniform={
   //uLightPos:[-10,10,-100],
@@ -26,7 +27,7 @@ var board_uniform={
   uMVPFromLight:twgl.m4.identity(),
   v_Color:[1,1,1,1],
   u_texture:undefined,
-  u_ambient:[0,0,0,1],//环境光
+  u_ambient:[0.2,0.2,0.2,1],//环境光
   u_specular:[1,1,1,1],//镜面反射
   u_shininess:120
 };
@@ -52,53 +53,37 @@ var projection_uniforms={
 }
 
 var gl;
+var mesh;
+var canvas;
+var fbi,fbi2;
+var hit_programInfo;
+var catBufferInfo,boardBufferInfo;
+
+var vectorX=[80,0,0];
+var vectorY=[0,80,0];
+var ratioX,ratioY;
+var tex,tex2,tex3;
+var invMat;
+
+var mouseFlag=false;
+var lastMousePosX,lastMousePosY;
 
 function main(){
-    var canvas = document.getElementById("gl-canvas");
-    canvas.onclick=function(e){
-      var bbox = canvas.getBoundingClientRect();
-      var x = event.clientX - bbox.left;
-      var y = canvas.height- (event.clientY - bbox.top);
-      console.log(x,y);
-      twgl.bindFramebufferInfo(gl,fbi2);
-      var readout=new Uint8Array(1*1*4);
-      //绘制hit帧
-      twgl.bindFramebufferInfo(gl,fbi2);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);  
-      gl.useProgram(hit_programInfo.program );
-      twgl.setUniforms(hit_programInfo,light_uniform);
-      twgl.setBuffersAndAttributes(gl, hit_programInfo, catBufferInfo);
-      twgl.setUniforms(hit_programInfo, cat_uniforms);
-      twgl.setUniforms(hit_programInfo, projection_uniforms);
-      twgl.setUniforms(hit_programInfo, view_uniforms);
-      twgl.drawBufferInfo(gl, catBufferInfo);
-
-      twgl.setBuffersAndAttributes(gl,hit_programInfo,boardBufferInfo);
-      board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
-      twgl.setUniforms(hit_programInfo, board_uniform);
-      twgl.setUniforms(programInfo, projection_uniforms);
-      twgl.setUniforms(programInfo, view_uniforms);
-      twgl.drawBufferInfo(gl,boardBufferInfo);
-      gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,readout);
-      console.log(readout);
-      if(readout[1]==204){
-        alert("你点击了猫!");
-      }
-      twgl.bindFramebufferInfo(gl,null);
-    }
+    canvas = document.getElementById("gl-canvas");
     gl = canvas.getContext("webgl");
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.5, 0.5, 0.5, 1.0);
     var programInfo = twgl.createProgramInfo(gl, ["vertex-shader", "fragment-shader"]);
     var shadow_programInfo=twgl.createProgramInfo(gl,["vertex-shader-shadow","fragment-shader-shadow"]);
-    var hit_programInfo=twgl.createProgramInfo(gl,["vertex-shader","hit-fragment-shader"]);
+    hit_programInfo=twgl.createProgramInfo(gl,["vertex-shader","hit-fragment-shader"]);
 
     var objStr = document.getElementById('cat.obj').innerHTML;
-    var mesh = new OBJ.Mesh(objStr);
+    mesh = new OBJ.Mesh(objStr);
     var cat_array={
         vPosition:mesh.vertices,
         a_normal:mesh.vertexNormals,
-        indices:mesh.indices
+        indices:mesh.indices,
+        a_texcoord:mesh.textures
     };
 
     var board_array={
@@ -112,11 +97,11 @@ function main(){
     ];
     
     
-    var catBufferInfo=twgl.createBufferInfoFromArrays(gl,cat_array);
-    var boardBufferInfo=twgl.createBufferInfoFromArrays(gl,board_array);
+    catBufferInfo=twgl.createBufferInfoFromArrays(gl,cat_array);
+    boardBufferInfo=twgl.createBufferInfoFromArrays(gl,board_array);
 
 
-    var tex=twgl.createTexture(gl,{
+    tex=twgl.createTexture(gl,{
       min:gl.NEAREST,
       mag:gl.NEAREST,
       src:[
@@ -127,11 +112,19 @@ function main(){
       ]
     });
 
-    var tex2=twgl.createTexture(gl,{
+    tex2=twgl.createTexture(gl,{
       min:gl.NEAREST,
       mag:gl.NEAREST,
       src:[
         200,149,106,255,
+      ]
+    });
+
+    tex3=twgl.createTexture(gl,{
+      min:gl.NEAREST,
+      mag:gl.NEAREST,
+      src:[
+        220,187,160,255
       ]
     });
 
@@ -142,8 +135,8 @@ function main(){
     cat_uniforms.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),center(mesh));
     
     shadow_uniform.uProjection=twgl.m4.perspective(d2r(70),1,1,1000);
-    const fbi = twgl.createFramebufferInfo(gl,attachments,1024,1024);
-    const fbi2 = twgl.createFramebufferInfo(gl,attachments,canvas.width,canvas.height);
+    fbi = twgl.createFramebufferInfo(gl,attachments,1024,1024);
+    fbi2 = twgl.createFramebufferInfo(gl,attachments,canvas.width,canvas.height);
     light_uniform.u_ShadowMap=fbi.attachments[0];
     gl.activeTexture(gl.TEXTURE0);
     twgl.setUniforms(light_uniform);
@@ -178,6 +171,15 @@ function main(){
         twgl.setUniforms(shadow_programInfo, shadow_uniform);
         twgl.drawBufferInfo(gl, catBufferInfo);
         
+        var temp=twgl.m4.multiply(projection_uniforms.uProjection,view_uniforms.uView);
+        //ratioX=(temp[0]+temp[12])/(temp[3]+temp[15])/2+0.5;
+        //ratioY=(temp[5]+temp[13])/(temp[7]+temp[15])/2+0.5;
+        ratioX=twgl.m4.transformPoint(temp,[1,0,50])[0]/2+0.5;
+        ratioY=twgl.m4.transformPoint(temp,[0,1,50])[1]/2+0.5;
+        //console.log(twgl.m4.transformPoint(temp,[1,1,50]))
+        invMat=twgl.m4.inverse(temp);
+        //if(temp[12]==0) console.log("等于0");
+        //console.log(twgl.m4.transformDirection(temp,vectorX));
         //var tempMat=twgl.m4.multiply(twgl.m4.multiply(twgl.m4.multiply(shadow_uniform.uProjection,shadow_uniform.uView),shadow_uniform.uWorld),shadow_uniform.uModel);
         
         
@@ -240,8 +242,92 @@ window.onload=function init(){
     var range=document.getElementById("cameraAngle");
     range.onchange=function(e){
       console.log(e);
-      changeCamera(parseFloat(e.target.value));
+      changeCameraY(parseFloat(e.target.value));
     }
+    var shinese=this.document.getElementById("shinese");
+    shinese.onchange=function(e){
+      changeShinese(parseFloat(e.target.value));
+    }
+    var lightPosZ=this.document.getElementById("lightPosZ");
+    lightPosZ.onchange=function(e){
+      changeLightPosZ(parseFloat(e.target.value));
+    }
+    var shadowSoft=this.document.getElementById("shadow");
+    shadowSoft.onchange=function(e){
+      changeShadow(e.target.value);
+    }
+    canvas.onmousedown=function(e){
+      var bbox = canvas.getBoundingClientRect();
+      var x = event.clientX - bbox.left;
+      var y = canvas.height- (event.clientY - bbox.top);
+      console.log(x,y);
+      twgl.bindFramebufferInfo(gl,fbi2);
+      var readout=new Uint8Array(1*1*4);
+      //绘制hit帧
+      twgl.bindFramebufferInfo(gl,fbi2);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);  
+      gl.useProgram(hit_programInfo.program );
+      twgl.setUniforms(hit_programInfo,light_uniform);
+      twgl.setBuffersAndAttributes(gl, hit_programInfo, catBufferInfo);
+      twgl.setUniforms(hit_programInfo, cat_uniforms);
+      twgl.setUniforms(hit_programInfo, projection_uniforms);
+      twgl.setUniforms(hit_programInfo, view_uniforms);
+      twgl.drawBufferInfo(gl, catBufferInfo);
+
+      twgl.setBuffersAndAttributes(gl,hit_programInfo,boardBufferInfo);
+      board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
+      twgl.setUniforms(hit_programInfo, board_uniform);
+      twgl.setUniforms(hit_programInfo, projection_uniforms);
+      twgl.setUniforms(hit_programInfo, view_uniforms);
+      twgl.drawBufferInfo(gl,boardBufferInfo);
+      gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,readout);
+      console.log(readout);
+      if(is_cat(readout)){
+        console.log("你点击了猫!");
+        mouseFlag=true;
+        lastMousePosX=x;
+        lastMousePosY=y;
+        cat_uniforms.u_texture=tex3;
+      }
+      twgl.bindFramebufferInfo(gl,null);
+    }
+
+    canvas.addEventListener("mousemove",function(event){
+      if(!mouseFlag) return;
+      var bbox = canvas.getBoundingClientRect();
+      var x = event.clientX - bbox.left;
+      var y = canvas.height- (event.clientY - bbox.top);
+      //ratioY=((invMat[5]+invMat[13])/(invMat[7]+invMat[15]))/2;
+      //ratioX=((invMat[0]+invMat[12])/(invMat[3]+invMat[15]))/2;
+      var dx=x-lastMousePosX;
+      var dy=y-lastMousePosY;
+      var ratio_x=(x-lastMousePosX)/canvas.width;
+      var ratio_y=(y-lastMousePosY)/canvas.height;
+      console.log(x,y);
+      lastMousePosX=x;
+      lastMousePosY=y;
+      /*
+      var offset=twgl.v3.mulScalar(vectorX,-1*ratio_x/ratioX);
+      changeCatLocationX(offset);
+      offset=twgl.v3.mulScalar(vectorY,ratio_y/ratioY);
+      changeCatLocationY(offset);
+      */
+      var offset=twgl.m4.transformDirection(invMat,[dx/5,dy/5,0]);
+      //offset[2]=0;
+      changeCatLocation(offset);
+      console.log(ratioX,ratioY,offset);
+    });
+
+    this.canvas.addEventListener("mouseup",function(){
+      if(mouseFlag) {
+        mouseFlag=false;
+        cat_uniforms.u_texture=tex2;
+      }
+    })
+}
+
+function is_cat(readout){
+  return readout[1]==204;
 }
 
 function center(mesh) {
@@ -273,7 +359,38 @@ function center(mesh) {
     return [-(minX + maxX) / 2, -(minY + maxY) / 2, -(minZ + maxZ) / 2];
   }
 
-function changeCamera(theta){
+function changeCameraY(theta){
   var rad=d2r(theta);
   camera_uniform.u_viewWorldPosition=[50*Math.sin(rad),0,-50*Math.cos(rad)];
+}
+
+function changeShinese(shinese){
+  board_uniform.u_shininess=shinese;
+}
+
+function changeLightPosZ(pos){
+  light_uniform.uLightPos[2]=pos;
+}
+
+function changeCatLocationX(offset){
+  //var temp=twgl.m4.multiply(projection_uniforms.uProjection,twgl.m4.multiply(view_uniforms.uView,twgl.m4.multiply(cat_uniforms.uWorld,cat_uniforms.uModel)));
+  //ratioX=(temp[0]+temp[4]+temp[8])/temp[12];
+  //console.log(temp);
+  cat_uniforms.uWorld=twgl.m4.translate(cat_uniforms.uWorld,offset);
+}
+
+function changeCatLocationY(offset){
+  cat_uniforms.uWorld=twgl.m4.translate(cat_uniforms.uWorld,offset);
+}
+
+function changeCatLocation(offset){
+  cat_uniforms.uWorld=twgl.m4.translate(cat_uniforms.uWorld,offset);
+}
+
+function showInv(){
+  console.log(invMat);
+}
+
+function changeShadow(shadow){
+  light_uniform.texelSize=shadow;
 }
