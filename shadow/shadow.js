@@ -1,4 +1,6 @@
 
+var $$ = mdui.JQ;
+
 function d2r(deg){
   return Math.PI*deg/180
 }
@@ -12,7 +14,8 @@ var cat_uniforms={
   u_texture:undefined,
   u_ambient:[0.1,0.1,0.1,1],
   u_specular:[1,1,1,1],
-  u_shininess:120
+  u_shininess:120,
+  u_mirrorWeight:0
 };
 var light_uniform={
   uLightPos:[-10,10,-120],
@@ -29,7 +32,9 @@ var board_uniform={
   u_texture:undefined,
   u_ambient:[0.2,0.2,0.2,1],//环境光
   u_specular:[1,1,1,1],//镜面反射
-  u_shininess:120
+  u_shininess:120,
+  u_mirrorWeight:0.2,
+  u_mirrorTexture:0
 };
 
 var shadow_uniform={
@@ -55,7 +60,7 @@ var projection_uniforms={
 var gl;
 var mesh;
 var canvas;
-var fbi,fbi2;
+var fbi,fbi2,fbi3;
 var hit_programInfo;
 var catBufferInfo,boardBufferInfo;
 
@@ -76,7 +81,7 @@ function main(){
     var programInfo = twgl.createProgramInfo(gl, ["vertex-shader", "fragment-shader"]);
     var shadow_programInfo=twgl.createProgramInfo(gl,["vertex-shader-shadow","fragment-shader-shadow"]);
     hit_programInfo=twgl.createProgramInfo(gl,["vertex-shader","hit-fragment-shader"]);
-
+    var mirrorProgramInfo=twgl.createProgramInfo(gl, ["vertex-shader", "fragment-shader"]);
     var objStr = document.getElementById('cat.obj').innerHTML;
     mesh = new OBJ.Mesh(objStr);
     var cat_array={
@@ -86,8 +91,9 @@ function main(){
         a_texcoord:mesh.textures
     };
 
+    var board_size=50;
     var board_array={
-        vPosition: [-100, -100, 0, 100, -100, 0, -100, 100, 0, -100, 100, 0, 100, -100, 0, 100, 100, 0],
+        vPosition: [- board_size, - board_size, 0,  board_size, - board_size, 0, - board_size,  board_size, 0, - board_size,  board_size, 0,  board_size, - board_size, 0,  board_size,  board_size, 0],
         a_normal:[0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,],
         a_texcoord:[0,0, 1,0, 0,1 ,1,0 ,0,1 ,0,0],
     };
@@ -137,19 +143,23 @@ function main(){
     shadow_uniform.uProjection=twgl.m4.perspective(d2r(70),1,1,1000);
     fbi = twgl.createFramebufferInfo(gl,attachments,1024,1024);
     fbi2 = twgl.createFramebufferInfo(gl,attachments,canvas.width,canvas.height);
+    fbi3 = twgl.createFramebufferInfo(gl,attachments,512,512);
     light_uniform.u_ShadowMap=fbi.attachments[0];
+    board_uniform.u_mirrorTexture=fbi3.attachments[0];
     gl.activeTexture(gl.TEXTURE0);
     twgl.setUniforms(light_uniform);
+    gl.activeTexture(gl.TEXTURE1);
+    twgl.setUniforms(board_uniform);
     gl.enable(gl.DEPTH_TEST);
+    var camera=[0,0,100];
     function render(){
-        view_uniforms.uView=twgl.m4.lookAt(camera_uniform.u_viewWorldPosition,[0,0,50],[0,1,0]);
+        view_uniforms.uView=twgl.m4.inverse(twgl.m4.lookAt(camera_uniform.u_viewWorldPosition,[0,0,50],[0,1,0]));
       
         //绘制阴影
         twgl.bindFramebufferInfo(gl,fbi);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(shadow_programInfo.program);
-        
-        shadow_uniform.uView=twgl.m4.lookAt(light_uniform.uLightPos,[0,0,1000],[0,1,0]);
+        shadow_uniform.uView=twgl.m4.inverse(twgl.m4.lookAt(light_uniform.uLightPos,[0,0,1000],[0,1,0]));
 
         var tempMat1=twgl.m4.multiply(twgl.m4.multiply(twgl.m4.multiply(shadow_uniform.uProjection,shadow_uniform.uView),cat_uniforms.uWorld),cat_uniforms.uModel);
         var tempMat2=twgl.m4.multiply(twgl.m4.multiply(twgl.m4.multiply(shadow_uniform.uProjection,shadow_uniform.uView),board_uniform.uWorld),board_uniform.uModel);
@@ -183,6 +193,33 @@ function main(){
         //var tempMat=twgl.m4.multiply(twgl.m4.multiply(twgl.m4.multiply(shadow_uniform.uProjection,shadow_uniform.uView),shadow_uniform.uWorld),shadow_uniform.uModel);
         
         
+        //绘制反射帧
+        twgl.bindFramebufferInfo(gl,fbi3);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(mirrorProgramInfo.program);
+        twgl.setUniforms(mirrorProgramInfo,light_uniform);
+        cat_uniforms.uMVPFromLight=tempMat1;
+        twgl.setBuffersAndAttributes(gl, mirrorProgramInfo, catBufferInfo);
+        twgl.setUniforms(mirrorProgramInfo, light_uniform);
+        twgl.setUniforms(mirrorProgramInfo, cat_uniforms);
+        twgl.setUniforms(mirrorProgramInfo, projection_uniforms);
+        twgl.setUniforms(mirrorProgramInfo, view_uniforms);
+
+        //camera[0]+=0.01;
+        //camera[2]+=0.05;
+        camera=camera_uniform.u_viewWorldPosition.slice();
+        camera[2]=50-camera[2];
+        var view=twgl.m4.lookAt(camera,[0,0,50],[0,1,0]);
+        var d={
+          uView:twgl.m4.inverse(view),
+          u_viewWorldPosition:camera,
+          uLightPos:[-10,10,220],
+        }
+        //console.log(twgl.m4.multiply(projection_uniforms.uProjection,view));
+        twgl.setUniforms(mirrorProgramInfo, d);
+        twgl.drawBufferInfo(gl, catBufferInfo);
+
+
         //绘制可见帧
         twgl.bindFramebufferInfo(gl,null);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -190,6 +227,7 @@ function main(){
 
         
         twgl.setUniforms(programInfo,light_uniform);
+        
         cat_uniforms.uMVPFromLight=tempMat1;
         twgl.setBuffersAndAttributes(gl, programInfo, catBufferInfo);
         twgl.setUniforms(programInfo, light_uniform);
@@ -197,7 +235,6 @@ function main(){
         twgl.setUniforms(programInfo, projection_uniforms);
         twgl.setUniforms(programInfo, view_uniforms);
         twgl.drawBufferInfo(gl, catBufferInfo);
-        
         
         twgl.setBuffersAndAttributes(gl,programInfo,boardBufferInfo);
         board_uniform.uMVPFromLight=tempMat2;
@@ -256,6 +293,10 @@ window.onload=function init(){
     shadowSoft.onchange=function(e){
       changeShadow(e.target.value);
     }
+    var mirror=this.document.getElementById("mirror");
+    mirror.onchange=function(e){
+      changeMirrorWeight(e.target.value);
+    }
     canvas.onmousedown=function(e){
       var bbox = canvas.getBoundingClientRect();
       var x = event.clientX - bbox.left;
@@ -312,7 +353,8 @@ window.onload=function init(){
       offset=twgl.v3.mulScalar(vectorY,ratio_y/ratioY);
       changeCatLocationY(offset);
       */
-      var offset=twgl.m4.transformDirection(invMat,[dx/5,dy/5,0]);
+      var offset=twgl.m4.transformPoint(invMat,[0,0,0]);
+      offset=twgl.v3.subtract(twgl.m4.transformPoint(invMat,[dx,dy,0]),offset);
       //offset[2]=0;
       changeCatLocation(offset);
       console.log(ratioX,ratioY,offset);
@@ -323,7 +365,9 @@ window.onload=function init(){
         mouseFlag=false;
         cat_uniforms.u_texture=tex2;
       }
-    })
+    });
+    var clearBtn=this.document.getElementById("clear");
+    clearBtn.onclick=function(){clear();}
 }
 
 function is_cat(readout){
@@ -361,7 +405,7 @@ function center(mesh) {
 
 function changeCameraY(theta){
   var rad=d2r(theta);
-  camera_uniform.u_viewWorldPosition=[50*Math.sin(rad),0,-50*Math.cos(rad)];
+  camera_uniform.u_viewWorldPosition=[-50*Math.sin(rad),0,-50*Math.cos(rad)];
 }
 
 function changeShinese(shinese){
@@ -393,4 +437,23 @@ function showInv(){
 
 function changeShadow(shadow){
   light_uniform.texelSize=shadow;
+}
+
+function changeMirrorWeight(weight){
+  board_uniform.u_mirrorWeight=weight;
+}
+
+function clear(){
+  console.log('bbb');
+  $$("#cameraAngle").val(0);
+  changeCameraY(0);
+  $$("#shinese").val(120);
+  changeShinese(120);
+  $$("#mirror").val(0.2);
+  changeMirrorWeight(0.2);
+  $$("#lightPosZ").val(-120);
+  changeLightPosZ(-120);
+  $$("#shadow").val(1024);
+  changeShadow(1024);
+  mdui.updateSliders();
 }
