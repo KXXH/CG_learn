@@ -17,7 +17,7 @@
     void main()
     {
         gl_Position = uProjection*uView*uWorld*uModel*vPosition;
-        gl_Position=uMat*vPosition;
+        //gl_Position=uMat*vPosition;
     }
 </script>
 
@@ -70,10 +70,10 @@ varying vec4 worldPos;
 void main()
 {
     gl_Position = uProjection*uView*uWorld*uModel*vPosition;
-    vec3 surfaceWorldPos=(uWorld*vPosition).xyz;
+    vec3 surfaceWorldPos=(uWorld*uModel*vPosition).xyz;
     v_normal=mat3(uWorld*uModel)*a_normal;
     v_surfaceToLight=uLightPos-surfaceWorldPos;
-    v_PositionFromLight = uMVPFromLight * vPosition;
+    v_PositionFromLight = uMVPFromLight  * vPosition;
     v_surfaceToView = u_viewWorldPosition - surfaceWorldPos;
     v_texcoord=a_texcoord;
     worldPos=gl_Position;
@@ -95,6 +95,7 @@ uniform vec4 u_specular;
 uniform vec4 u_ambient;
 uniform float texelSize;
 uniform float u_shininess;
+uniform bool uShadow_type;
 uniform sampler2D u_texture;
 uniform sampler2D u_ShadowMap;
 uniform sampler2D u_mirrorTexture;
@@ -146,7 +147,10 @@ void main()
         for(float x=-1.5;x<=1.5;x+=1.0){
             rgbaDepth=texture2D(u_ShadowMap, shadowCoord.xy+vec2(x,y)*(1.0/texelSize));
             depth = unpackDepth(rgbaDepth);
-            shadows+=(shadowCoord.z > depth + 0.001 ) ? 0.0 : 1.0;
+            if(!uShadow_type)
+                shadows+=(shadowCoord.z > depth + 0.00004 ) ? 0.0 : 1.0;
+            else
+                shadows+=(shadowCoord.z > depth + 0.002 ) ? 0.0 : 1.0;
         }
     }
     shadows/=16.0;
@@ -169,10 +173,10 @@ void main()
     
     
     //gl_FragColor=mix(gl_FragColor,mirrorColor,u_mirrorWeight);
-    //gl_FragColor=vec4(vec3(pow(depth)),1);
+    //gl_FragColor=vec4(vec3(pow(depth,10.0)),1);
     //gl_FragColor=vec4(vec3(visibility),1);
     //gl_FragColor=rgbaDepth;
-    //gl_FragColor=vec4(vec3(pow(shadowCoord.z)), 1.0);
+    //gl_FragColor=vec4(vec3(pow(shadowCoord.z,10.0)), 1.0);
     //gl_FragColor=vec4(vec3(v_PositionFromLight.z/v_PositionFromLight.w), 1.0);
     //gl_FragColor=vec4(vec3(gl_FragCoord.z), 1.0);
     //gl_FragColor = vec4(vec3(pow(gl_FragColor.z)), 1.0);
@@ -3319,28 +3323,93 @@ void main()
                         <div class="mdui-col-xs-12 mdui-col-md-6" id="control_panel">
                                 
                             <h1>控制面板</h1>
-                            <h2>相机旋转</h2>
+                            <div style="display: none;">
+                                <h2>相机旋转</h2>
                             <label class="mdui-slider">
                                 <input type="range" id="cameraAngle" step="0.1" min="-90" max="90" value="0"/>
                             </label>
+                            </div>
+                            <div class="mdui-divider"></div>
                             <h2>镜面反射</h2>
-                            <h3>炫光</h3>
-                            <label class="mdui-slider">
-                                <input type="range" id="shinese" step="0.1" min="1" max="200" value="120"/>
-                            </label>
-                            <h3>倒影混合</h3>
-                            <label class="mdui-slider">
-                                <input type="range" id="mirror" step="0.1" min="0" max="1" value="0.2"/>
-                            </label>
+                            <div class="mdui-row">
+                                <div class="mdui-col-xs-6">
+                                    <h3>炫光</h3>
+                                    <label class="mdui-slider">
+                                        <input type="range" id="shinese" step="0.1" min="1" max="200" value="120"/>
+                                    </label>
+                                </div>
+                                <div class="mdui-col-xs-6">
+                                    <h3>倒影混合</h3>
+                                    <label class="mdui-slider">
+                                        <input type="range" id="mirror" step="0.1" min="0" max="1" value="0.2"/>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mdui-divider"></div>
                             <h2>光源位置</h2>
                             <label class="mdui-slider">
                                 <input type="range" id="lightPosZ" step="0.1" min="-170" max="-90"  value="-120"/>
                             </label>
+                            <div class="mdui-divider"></div>
                             <h2>阴影软硬</h2>
                             <label class="mdui-slider">
                                 <input type="range" id="shadow" step="0.1" min="256" max="2048" value="1024"/>
                             </label>
-            
+                            <div class="mdui-divider"></div>
+                            <h2>图形变换</h2>
+                            
+                            <div class="mdui-row">
+                                <div class="mdui-row-xs-2 mdui-col-xs-6">
+                                    <h3>X轴</h3>
+                                    <div class="mdui-col">
+                                      <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateX(5)">增加</button>
+                                    </div>
+                                    <div class="mdui-col">
+                                      <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateX(-5)">减小</button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div class="mdui-row-xs-2 mdui-col-xs-6">
+                                    <h3>Y轴</h3>
+                                      <div class="mdui-col">
+                                        <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateY(5)">增加</button>
+                                      </div>
+                                      <div class="mdui-col">
+                                        <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateY(-5)">减小</button>
+                                      </div>
+                                    </div>
+                            </div>
+
+                            <div class="mdui-row">
+                                <div class="mdui-row-xs-2 mdui-col-xs-6">
+                                    <h3>Z轴</h3>
+                                    <div class="mdui-col">
+                                      <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateZ(5)">增加</button>
+                                    </div>
+                                    <div class="mdui-col">
+                                      <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="rotateZ(-5)">减小</button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div class="mdui-row-xs-2 mdui-col-xs-6">
+                                    <h3>缩放</h3>
+                                      <div class="mdui-col">
+                                        <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="scale(1.1)">增加</button>
+                                      </div>
+                                      <div class="mdui-col">
+                                        <button class="mdui-btn mdui-btn-block mdui-color-indigo mdui-ripple" onclick="scale(0.9)">减小</button>
+                                      </div>
+                                    </div>
+                            </div>
+                            <div class="mdui-divider"></div>
+                            <h2>投影控制</h2>
+                            <div class="mdui-row">
+                                            <label class="mdui-switch mdui-col-xs-12">启用透视投影
+                                                            <input type="checkbox" class="mdui-float-right" onclick="toggleProjection()" checked/>
+                                                            <i class="mdui-switch-icon mdui-float-right"></i>
+                                            </label>
+                            </div>
+                            
 </div>
 </body>
 </html>

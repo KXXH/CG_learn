@@ -5,6 +5,12 @@ function d2r(deg){
   return Math.PI*deg/180
 }
 
+var perspective=()=>twgl.m4.perspective(d2r(90),1,0.1,1000);
+
+var ortho=()=>twgl.m4.ortho(-100,100,-100,100,-100,200);
+
+var project=perspective;
+
 var cat_uniforms={
   //uLightPos:[-10,10,-100],
   uWorld:twgl.m4.identity(),
@@ -21,7 +27,8 @@ var light_uniform={
   uLightPos:[-10,10,-120],
   u_ShadowMap:0.0,
   u_lightColor:[1,1,1,1],
-  texelSize:1024
+  texelSize:1024,
+  uShadow_type:false
 }
 var board_uniform={
   //uLightPos:[-10,10,-100],
@@ -36,6 +43,10 @@ var board_uniform={
   u_mirrorWeight:0.2,
   u_mirrorTexture:0
 };
+
+var board_uniform2={
+  u_mirrorWeight:0,
+}
 
 var shadow_uniform={
   uWorld:twgl.m4.identity(),
@@ -54,7 +65,7 @@ var view_uniforms={
 };
 
 var projection_uniforms={
-  uProjection:twgl.m4.perspective(d2r(90),1,0.1,1000)
+  uProjection:project()
 }
 
 var gl;
@@ -71,7 +82,11 @@ var tex,tex2,tex3;
 var invMat;
 
 var mouseFlag=false;
+var trackBall=false;
+var catMove=false;
 var lastMousePosX,lastMousePosY;
+
+
 
 function main(){
     canvas = document.getElementById("gl-canvas");
@@ -97,6 +112,12 @@ function main(){
         a_normal:[0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,],
         a_texcoord:[0,0, 1,0, 0,1 ,1,0 ,0,1 ,0,0],
     };
+    var board_array2={
+      vPosition: [- board_size, -board_size, - board_size,  board_size, -board_size, - board_size, - board_size,  -board_size, board_size, - board_size,  -board_size,  board_size, board_size,  -board_size, - board_size, board_size, -board_size , board_size],
+      a_normal:[0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,],
+      a_texcoord:[0,0, 1,0, 0,1 ,1,0 ,0,1 ,0,0],
+  };
+
     const attachments = [
         { format: gl.RGBA, type: gl.UNSIGNED_BYTE, min: gl.LINEAR },
         { format: gl.DEPTH_COMPONENT16 },
@@ -105,7 +126,7 @@ function main(){
     
     catBufferInfo=twgl.createBufferInfoFromArrays(gl,cat_array);
     boardBufferInfo=twgl.createBufferInfoFromArrays(gl,board_array);
-
+    boardBufferInfo2=twgl.createBufferInfoFromArrays(gl,board_array2);
 
     tex=twgl.createTexture(gl,{
       min:gl.NEAREST,
@@ -138,9 +159,9 @@ function main(){
     cat_uniforms.u_texture=tex2;
 
     board_uniform.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),[0,0,50]);
-    cat_uniforms.uWorld=twgl.m4.setTranslation(twgl.m4.identity(),center(mesh));
+    cat_uniforms.uModel=twgl.m4.setTranslation(twgl.m4.identity(),center(mesh));
     
-    shadow_uniform.uProjection=twgl.m4.perspective(d2r(70),1,1,1000);
+    
     fbi = twgl.createFramebufferInfo(gl,attachments,1024,1024);
     fbi2 = twgl.createFramebufferInfo(gl,attachments,canvas.width,canvas.height);
     fbi3 = twgl.createFramebufferInfo(gl,attachments,512,512);
@@ -153,6 +174,8 @@ function main(){
     gl.enable(gl.DEPTH_TEST);
     var camera=[0,0,100];
     function render(){
+        shadow_uniform.uProjection=project();
+        projection_uniforms.uProjection=project();
         view_uniforms.uView=twgl.m4.inverse(twgl.m4.lookAt(camera_uniform.u_viewWorldPosition,[0,0,50],[0,1,0]));
       
         //绘制阴影
@@ -171,7 +194,6 @@ function main(){
         twgl.setUniforms(shadow_programInfo, shadow_uniform);
         twgl.setBuffersAndAttributes(gl,shadow_programInfo,boardBufferInfo);
         twgl.drawBufferInfo(gl,boardBufferInfo);
-
         
         shadow_uniform.uWorld=cat_uniforms.uWorld;
         shadow_uniform.uModel=cat_uniforms.uModel;
@@ -181,7 +203,7 @@ function main(){
         twgl.setUniforms(shadow_programInfo, shadow_uniform);
         twgl.drawBufferInfo(gl, catBufferInfo);
         
-        var temp=twgl.m4.multiply(projection_uniforms.uProjection,view_uniforms.uView);
+        var temp=twgl.m4.multiply(projection_uniforms.uProjection,twgl.m4.multiply(view_uniforms.uView,twgl.m4.multiply(cat_uniforms.uWorld,cat_uniforms.uModel)));
         //ratioX=(temp[0]+temp[12])/(temp[3]+temp[15])/2+0.5;
         //ratioY=(temp[5]+temp[13])/(temp[7]+temp[15])/2+0.5;
         ratioX=twgl.m4.transformPoint(temp,[1,0,50])[0]/2+0.5;
@@ -208,7 +230,7 @@ function main(){
         //camera[0]+=0.01;
         //camera[2]+=0.05;
         camera=camera_uniform.u_viewWorldPosition.slice();
-        camera[2]=50-camera[2];
+        camera[2]=100-camera[2];
         var view=twgl.m4.lookAt(camera,[0,0,50],[0,1,0]);
         var d={
           uView:twgl.m4.inverse(view),
@@ -220,6 +242,7 @@ function main(){
         twgl.drawBufferInfo(gl, catBufferInfo);
 
 
+        
         //绘制可见帧
         twgl.bindFramebufferInfo(gl,null);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -236,14 +259,14 @@ function main(){
         twgl.setUniforms(programInfo, view_uniforms);
         twgl.drawBufferInfo(gl, catBufferInfo);
         
-        twgl.setBuffersAndAttributes(gl,programInfo,boardBufferInfo);
+        
         board_uniform.uMVPFromLight=tempMat2;
         twgl.setUniforms(programInfo,light_uniform);
         twgl.setUniforms(programInfo, board_uniform);
         twgl.setUniforms(programInfo, projection_uniforms);
         twgl.setUniforms(programInfo, view_uniforms);
+        twgl.setBuffersAndAttributes(gl,programInfo,boardBufferInfo);
         twgl.drawBufferInfo(gl,boardBufferInfo);
-        
 
         /*
        twgl.bindFramebufferInfo(gl,null);
@@ -268,6 +291,7 @@ function main(){
        twgl.setUniforms(programInfo, shadow_uniform);
        twgl.drawBufferInfo(gl, catBufferInfo);
        */
+      TWEEN.update();
        requestAnimationFrame(render);
     }
 
@@ -324,45 +348,73 @@ window.onload=function init(){
       gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,readout);
       console.log(readout);
       if(is_cat(readout)){
-        console.log("你点击了猫!");
         mouseFlag=true;
+        catMove=true;
         lastMousePosX=x;
         lastMousePosY=y;
         cat_uniforms.u_texture=tex3;
+      }else{
+        mouseFlag=true;
+        trackBall=true;
+        lastMousePosX=x;
+        lastMousePosY=y;
       }
       twgl.bindFramebufferInfo(gl,null);
     }
-
+    canvas.onmousewheel=function(event){
+      console.log(event);
+      event.preventDefault();
+      var dy=event.deltaY;
+      camera_uniform.u_viewWorldPosition=twgl.m4.transformPoint(twgl.m4.translate(twgl.m4.identity(),[0,0,dy*-0.1]),camera_uniform.u_viewWorldPosition);
+    };
     canvas.addEventListener("mousemove",function(event){
       if(!mouseFlag) return;
       var bbox = canvas.getBoundingClientRect();
       var x = event.clientX - bbox.left;
-      var y = canvas.height- (event.clientY - bbox.top);
+      var y = canvas.height- (event.clientY - bbox.top)*(canvas.height/bbox.height);
       //ratioY=((invMat[5]+invMat[13])/(invMat[7]+invMat[15]))/2;
       //ratioX=((invMat[0]+invMat[12])/(invMat[3]+invMat[15]))/2;
       var dx=x-lastMousePosX;
       var dy=y-lastMousePosY;
       var ratio_x=(x-lastMousePosX)/canvas.width;
       var ratio_y=(y-lastMousePosY)/canvas.height;
-      console.log(x,y);
+      //console.log(x,y);
+
+      if(catMove){
+        
+        /*
+        var offset=twgl.v3.mulScalar(vectorX,-1*ratio_x/ratioX);
+        changeCatLocationX(offset);
+        offset=twgl.v3.mulScalar(vectorY,ratio_y/ratioY);
+        changeCatLocationY(offset);
+        */
+        var offset=twgl.m4.transformPoint(invMat,[0,0,0.01]);
+        offset=twgl.v3.subtract(twgl.m4.transformPoint(invMat,[dx,dy,0.01]),offset);
+        if(light_uniform.uShadow_type){
+          twgl.v3.divide(offset,[300,300,300],offset);
+        }
+        //offset[2]=0;
+        changeCatLocation(offset);
+        console.log(ratioX,ratioY,offset);
+      }else{
+        var r_x = 2*x * (canvas.width/bbox.width)/canvas.width-1;
+        var r_y = 2*y/canvas.height-1;
+        var last_rx=2*lastMousePosX*(canvas.width/bbox.width)/canvas.width-1;
+        var last_ry=2*lastMousePosY/canvas.height-1;
+        var ans = mouseMotion(r_x,last_ry,last_rx,r_y);
+        camera_uniform.u_viewWorldPosition=twgl.m4.transformPoint(twgl.m4.axisRotate(twgl.m4.identity(),ans.axis,3*ans.angle),camera_uniform.u_viewWorldPosition);
+        console.log(ans);
+      }
+
       lastMousePosX=x;
       lastMousePosY=y;
-      /*
-      var offset=twgl.v3.mulScalar(vectorX,-1*ratio_x/ratioX);
-      changeCatLocationX(offset);
-      offset=twgl.v3.mulScalar(vectorY,ratio_y/ratioY);
-      changeCatLocationY(offset);
-      */
-      var offset=twgl.m4.transformPoint(invMat,[0,0,0]);
-      offset=twgl.v3.subtract(twgl.m4.transformPoint(invMat,[dx,dy,0]),offset);
-      //offset[2]=0;
-      changeCatLocation(offset);
-      console.log(ratioX,ratioY,offset);
+      
     });
 
     this.canvas.addEventListener("mouseup",function(){
       if(mouseFlag) {
         mouseFlag=false;
+        catMove=trackBall=false;
         cat_uniforms.u_texture=tex2;
       }
     });
@@ -456,4 +508,71 @@ function clear(){
   $$("#shadow").val(1024);
   changeShadow(1024);
   mdui.updateSliders();
+  cat_uniforms.uWorld=twgl.m4.identity();
+}
+
+function rotateX(degree){
+  //new TWEEN.Tween(cat_uniforms).to({uWorld:twgl.m4.rotateX(cat_uniforms.uWorld,d2r(degree))}).start();
+  twgl.m4.rotateX(cat_uniforms.uWorld,d2r(degree),cat_uniforms.uWorld);
+}
+
+function rotateY(degree){
+  twgl.m4.rotateY(cat_uniforms.uWorld,d2r(degree),cat_uniforms.uWorld);
+}
+
+function rotateZ(degree){
+  twgl.m4.rotateZ(cat_uniforms.uWorld,d2r(degree),cat_uniforms.uWorld);
+}
+
+function scale(s){
+  twgl.m4.scale(cat_uniforms.uWorld,[s,s,s],cat_uniforms.uWorld);
+}
+
+function toggleProjection(){
+  if(light_uniform.uShadow_type){
+    light_uniform.uShadow_type=false;
+    project=perspective;
+  }else{
+    light_uniform.uShadow_type=true;
+    project=ortho;
+  }
+}
+
+function trackballView( x,  y ) {
+  var d, a;
+  var v = [];
+
+  v[0] = x;
+  v[1] = y;
+
+  d = v[0]*v[0] + v[1]*v[1];
+  if (d < 1.0)
+    v[2] = Math.sqrt(1.0 - d);
+  else {
+    v[2] = 0.0;
+    a = 1.0 /  Math.sqrt(d);
+    v[0] *= a;
+    v[1] *= a;
+  }
+  return v;
+}
+
+function mouseMotion( x,  y, lastRatioPosX, lastRatioPosY)
+{
+    var dx, dy, dz;
+
+    var curPos = trackballView(x, y);
+    var lastPos = trackballView(lastRatioPosX,lastRatioPosY);
+    dx = curPos[0] - lastPos[0];
+    dy = curPos[1] - lastPos[1];
+    dz = curPos[2] - lastPos[2];
+    var axis=[0,0,0];
+    var angle;
+    if (dx || dy || dz) {
+        angle = -0.1 * Math.sqrt(dx*dx + dy*dy + dz*dz);	
+        axis[0] = lastPos[1]*curPos[2] - lastPos[2]*curPos[1];
+        axis[1] = lastPos[2]*curPos[0] - lastPos[0]*curPos[2];
+        axis[2] = lastPos[0]*curPos[1] - lastPos[1]*curPos[0];
+    }
+    return {axis:axis,angle:angle};
 }
