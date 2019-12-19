@@ -12,25 +12,16 @@
     uniform mat4 uWorld;
     uniform mat4 uView;
     uniform mat4 uProjection;
-    uniform mat4 uMat;
 
     void main()
     {
         gl_Position = uProjection*uView*uWorld*uModel*vPosition;
-        //gl_Position=uMat*vPosition;
     }
 </script>
 
 <script id="fragment-shader-shadow" type="x-shader/x-fragment">
     precision mediump float;
     uniform vec4 v_Color;
-    float pow(float x){
-        float ans=x;
-        for(int i=0;i<100;i++){
-            ans*=x;
-        }
-        return ans;
-    }
     
     void main()
     {
@@ -38,10 +29,8 @@
         const vec4 bitMask = vec4(1.0/256.0, 1.0/256.0, 1.0/256.0, 0.0);
         vec4 rgbaDepth = fract(gl_FragCoord.z * bitShift);
         rgbaDepth -= rgbaDepth.gbaa * bitMask;
-        //gl_FragColor =  vec4(0.0,0.0,0.0,pow(gl_FragCoord.z)); 
-        //gl_FragColor =  vec4(0.0,0.0,0.0,gl_FragCoord.z); 
         gl_FragColor=rgbaDepth;
-        //gl_FragColor=v_Color;
+
     }
     </script>
 
@@ -109,11 +98,11 @@ float pow(float x){
     return ans;
 }
 
-    float unpackDepth(const in vec4 rgbaDepth){
-        const vec4 bitShift = vec4(1.0, 1.0/256.0, 1.0/(256.0*256.0), 1.0/(256.0*256.0*256.0));
-        float depth = dot(rgbaDepth, bitShift);
-        return depth;
-    }
+float unpackDepth(const in vec4 rgbaDepth){
+    const vec4 bitShift = vec4(1.0, 1.0/256.0, 1.0/(256.0*256.0), 1.0/(256.0*256.0*256.0));
+    float depth = dot(rgbaDepth, bitShift);
+    return depth;
+}
 
 void main()
 {
@@ -158,25 +147,25 @@ void main()
     //float depth = rgbaDepth.a;
     depth = unpackDepth(rgbaDepth);
     //float visibility = (v_PositionFromLight.z > depth + 0.005) ? 0.5 : 1.0;
-    float visibility = (shadowCoord.z > depth + 0.001 ) ? 0.4 : 1.0;
+    float visibility = (shadowCoord.z > depth + 0.00004 ) ? 0.0 : 1.0;
     //vec4 v_Color =  vec4(1.0,1.0,1.0,1); 
     //gl_FragColor=v_Color;
     visibility=shadows;
     gl_FragColor.rgb = diffuseColor.rgb*light;    //漫反射项   
     
-    //gl_FragColor.rgb += specular*u_specular.rgb;    //镜面反射项
-    gl_FragColor.rgb += mix(specular*u_specular,mirrorColor,u_mirrorWeight).rgb;
     gl_FragColor.rgb *= visibility;   //阴影覆盖在漫反射项
+    gl_FragColor.rgb += mix(specular*u_specular,mirrorColor,u_mirrorWeight).rgb;
+    
     float d=length(v_surfaceToLight);
     gl_FragColor.rgb/=(0.00005*d*d);
     gl_FragColor += diffuseColor*u_ambient; //环境光项
     
     
     //gl_FragColor=mix(gl_FragColor,mirrorColor,u_mirrorWeight);
-    //gl_FragColor=vec4(vec3(pow(depth,10.0)),1);
+    //gl_FragColor=vec4(vec3(pow(depth,600.0)),1);
     //gl_FragColor=vec4(vec3(visibility),1);
     //gl_FragColor=rgbaDepth;
-    //gl_FragColor=vec4(vec3(pow(shadowCoord.z,10.0)), 1.0);
+    //gl_FragColor=vec4(vec3(pow(shadowCoord.z,600.0)), 1.0);
     //gl_FragColor=vec4(vec3(v_PositionFromLight.z/v_PositionFromLight.w), 1.0);
     //gl_FragColor=vec4(vec3(gl_FragCoord.z), 1.0);
     //gl_FragColor = vec4(vec3(pow(gl_FragColor.z)), 1.0);

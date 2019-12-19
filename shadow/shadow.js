@@ -232,10 +232,12 @@ function main(){
         camera=camera_uniform.u_viewWorldPosition.slice();
         camera[2]=100-camera[2];
         var view=twgl.m4.lookAt(camera,[0,0,50],[0,1,0]);
+        var lightPos=light_uniform.uLightPos.slice();
+        lightPos[2]=100-lightPos[2];
         var d={
           uView:twgl.m4.inverse(view),
           u_viewWorldPosition:camera,
-          uLightPos:[-10,10,220],
+          uLightPos:lightPos,
         }
         //console.log(twgl.m4.multiply(projection_uniforms.uProjection,view));
         twgl.setUniforms(mirrorProgramInfo, d);
